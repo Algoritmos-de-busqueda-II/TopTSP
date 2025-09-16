@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TopABII - Universidad Rey Juan Carlos</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div>
+                    <h1>TopABII</h1>
+                    <div class="logo-subtitle">Plataforma de Competición TSP - Universidad Rey Juan Carlos</div>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="/" class="active">Inicio</a>
+                <a href="/ranking">Ranking</a>
+                <a id="login-link" href="/login">Acceder</a>
+                <a id="user-link" href="/user" class="hidden">Subir Solución</a>
+                <a id="admin-link" href="/admin" class="hidden">Administración</a>
+                <a id="logout-link" href="#" onclick="logout()" class="hidden">Cerrar Sesión</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card fade-in">
+            <h2>Bienvenido a TopABII</h2>
+            
+            <div class="mb-3 text-center competition-info">
+                <h3>Competición Actual: <span id="instance-name">Berlin 52</span></h3>
+                <div id="countdown" class="countdown-timer">⏰ Cargando...</div>
+                <div id="end-date" class="end-date-info"></div>
+            </div>
+            <p>TopABII es la plataforma oficial de competición para el Problema del Viajante de Comercio (TSP) de la Universidad Rey Juan Carlos.</p>
+            
+            <h3>¿Qué es el TSP?</h3>
+            <p>El Problema del Viajante de Comercio (Traveling Salesman Problem) es uno de los problemas de optimización más conocidos en ciencias de la computación. El objetivo es encontrar la ruta más corta que visite todas las ciudades exactamente una vez y regrese al punto de partida.</p>
+            
+            <h3>¿Cómo participar?</h3>
+            <ol>
+                <li><strong>Obtén acceso:</strong> Los administradores pueden crear tu cuenta de usuario.</li>
+                <li><strong>Inicia sesión:</strong> Utiliza tu correo electrónico como usuario inicial.</li>
+                <li><strong>Administrador:</strong> Para el primer inicio de sesión de administrador usa: <code>sergio.cavero@urjc.es</code></li>
+                <li><strong>Cambia tu contraseña:</strong> En tu primer acceso deberás establecer una nueva contraseña.</li>
+                <li><strong>Sube tu solución:</strong> Introduce tu solución en el formato: 1, 2, 3, 4, 5, ...</li>
+                <li><strong>Compite:</strong> Tu mejor solución aparecerá automáticamente en el ranking.</li>
+            </ol>
+            
+            <div class="grid grid-2 mt-3">
+                <div class="card">
+                    <h3>📊 Ranking en Tiempo Real</h3>
+                    <p>Consulta el ranking actualizado con las mejores soluciones de todos los participantes.</p>
+                    <a href="/ranking" class="btn btn-primary">Ver Ranking</a>
+                </div>
+                
+                <div class="card">
+                    <h3>🔑 Área de Usuario</h3>
+                    <p>Accede a tu panel personal para subir soluciones y gestionar tu cuenta.</p>
+                    <a href="/login" class="btn btn-secondary">Iniciar Sesión</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Reglas de la Competición</h2>
+            <ul>
+                <li>Cada usuario puede subir múltiples soluciones</li>
+                <li>Solo se mantiene tu mejor solución para el ranking</li>
+                <li>Las soluciones deben incluir todos los nodos exactamente una vez</li>
+                <li>El formato debe ser: números separados por comas (ej: 1, 2, 3, 4, 5)</li>
+                <li>El ranking se ordena por valor objetivo (menor es mejor)</li>
+                <li>En caso de empate, se prioriza la solución más antigua (primera en conseguir dicho valor)</li>
+            </ul>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Universidad Rey Juan Carlos - TopABII Platform</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

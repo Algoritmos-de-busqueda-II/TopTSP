@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Usuario - TopABII</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div>
+                    <h1>TopABII</h1>
+                    <div class="logo-subtitle">Panel de Usuario - Universidad Rey Juan Carlos</div>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="/">Inicio</a>
+                <a href="/ranking">Ranking</a>
+                <a href="/user" class="active">Subir Solución</a>
+                <a id="admin-link" href="/admin" class="hidden">Administración</a>
+                <a href="#" onclick="logout()">Cerrar Sesión</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="alert-container"></div>
+
+        <!-- User Info -->
+        <div class="card fade-in">
+            <h2>Información de Usuario</h2>
+            <div class="grid grid-2">
+                <div>
+                    <p><strong>Usuario:</strong> <span id="user-email">Cargando...</span></p>
+                    <p><strong>Estado:</strong> <span id="user-status">Activo</span></p>
+                </div>
+                <div class="text-right">
+                    <button id="change-password-btn" class="btn btn-secondary" onclick="showPasswordModal()">
+                        🔒 Cambiar Contraseña
+                    </button>
+                </div>
+            </div>
+
+            <!-- Solution Stats -->
+            <div id="solution-stats" class="mt-3 hidden">
+                <h3>Estadísticas Personales</h3>
+                <div class="grid grid-3">
+                    <div class="text-center">
+                        <h4 id="best-value">-</h4>
+                        <p>Mejor Valor</p>
+                    </div>
+                    <div class="text-center">
+                        <h4 id="total-submissions">-</h4>
+                        <p>Envíos Totales</p>
+                    </div>
+                    <div class="text-center">
+                        <h4 id="last-improvement">-</h4>
+                        <p>Última Mejora</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Solution Card -->
+        <div class="card">
+            <h2>Subir Solución TSP</h2>
+            <p>Introduce tu solución en el formato: 1, 2, 3, 4, 5, ...</p>
+            
+            <form id="solution-form">
+                <div class="form-group">
+                    <label for="solution">Solución:</label>
+                    <input type="text" id="solution" name="solution" class="form-control" 
+                           placeholder="1, 2, 3, 4, 5" required>
+                    <small>Introduce los números de los nodos separados por comas</small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Enviar Solución</button>
+            </form>
+        </div>
+
+        <!-- Solution History Card -->
+        <div class="card">
+            <h2>Historial de Soluciones</h2>
+            <p>Tus últimas 50 soluciones enviadas</p>
+            
+            <div id="solution-history-loading" class="text-center">
+                <p>Cargando historial...</p>
+            </div>
+            
+            <div id="solution-history-container" class="hidden">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Solución</th>
+                            <th>Valor Objetivo</th>
+                            <th>Estado</th>
+                            <th>Fecha/Hora</th>
+                        </tr>
+                    </thead>
+                    <tbody id="solution-history-tbody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="solution-history-empty" class="text-center hidden">
+                <p>Aún no has enviado soluciones.</p>
+                <p><small>¡Envía tu primera solución arriba!</small></p>
+            </div>
+        </div>
+
+        <!-- Instructions Card -->
+        <div class="card">
+            <h2>Instrucciones</h2>
+            <div class="grid grid-2">
+                <div>
+                    <h3>Formato de Solución</h3>
+                    <ul>
+                        <li>Usa números enteros separados por comas</li>
+                        <li>Incluye todos los nodos exactamente una vez</li>
+                        <li>Los espacios son opcionales</li>
+                        <li>Ejemplo: <code>1, 2, 3, 4, 5</code> o <code>1,2,3,4,5</code></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>Validación</h3>
+                    <ul>
+                        <li>Se verifica que todos los nodos estén presentes</li>
+                        <li>No se permiten nodos duplicados</li>
+                        <li>Se calcula automáticamente el valor objetivo</li>
+                        <li>Solo se guarda tu mejor solución para el ranking</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Change Password Modal -->
+    <div id="password-modal" class="hidden">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <h2>Cambiar Contraseña</h2>
+                    <p>Introduce tu nueva contraseña</p>
+                </div>
+
+                <div id="password-alert-container"></div>
+
+                <form id="password-form">
+                    <div class="form-group">
+                        <label for="new-password">Nueva Contraseña:</label>
+                        <input type="password" id="new-password" name="newPassword" class="form-control" 
+                               required minlength="6" placeholder="Mínimo 6 caracteres">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm-password">Confirmar Contraseña:</label>
+                        <input type="password" id="confirm-password" name="confirmPassword" class="form-control" 
+                               required minlength="6">
+                    </div>
+
+                    <div class="grid grid-2">
+                        <button type="button" class="btn btn-secondary" onclick="hidePasswordModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 Universidad Rey Juan Carlos - TopABII Platform</p>
+    </footer>
+
+    <script src="app.js"></script>
+    <script src="user.js"></script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking - TopABII</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div>
+                    <h1>TopABII</h1>
+                    <div class="logo-subtitle">Ranking de Competición - Universidad Rey Juan Carlos</div>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="/">Inicio</a>
+                <a href="/ranking" class="active">Ranking</a>
+                <a id="login-link" href="/login">Acceder</a>
+                <a id="user-link" href="/user" class="hidden">Subir Solución</a>
+                <a id="admin-link" href="/admin" class="hidden">Administración</a>
+                <a id="logout-link" href="#" onclick="logout()" class="hidden">Cerrar Sesión</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card fade-in">
+            <h2>🏆 Competición Actual: <span id="instance-name">Berlin 52</span></h2>
+            
+            <div class="mb-3 text-center">
+                <div id="countdown" class="countdown-timer">⏰ Cargando...</div>
+                <div id="end-date" class="end-date-info"></div>
+            </div>
+            
+            <div id="ranking-status" class="mb-3">
+                <span class="status-indicator status-online"></span>
+                <span>Ranking actualizado en tiempo real</span>
+            </div>
+
+            <!-- Frozen Message -->
+            <div id="frozen-message" class="alert alert-warning hidden">
+                <strong>⚠️ Ranking Congelado</strong><br>
+                El ranking está temporalmente oculto. Las soluciones continúan siendo procesadas en segundo plano.
+            </div>
+
+            <!-- Loading Message -->
+            <div id="loading-message" class="text-center">
+                <p>Cargando ranking...</p>
+            </div>
+
+            <!-- Ranking Table -->
+            <div id="ranking-table-container" class="hidden">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Posición</th>
+                            <th>Usuario</th>
+                            <th>Mejor Valor</th>
+                            <th>Fecha/Hora</th>
+                            <th>Total Envíos</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-tbody">
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty Ranking Message -->
+            <div id="empty-message" class="text-center hidden">
+                <p>No hay soluciones disponibles aún.</p>
+                <p><small>¡Sé el primero en subir una solución!</small></p>
+            </div>
+        </div>
+
+        <!-- Statistics Card -->
+        <div class="card">
+            <h2>📊 Estadísticas</h2>
+            <div class="grid grid-3">
+                <div class="text-center">
+                    <h3 id="total-participants">-</h3>
+                    <p>Participantes</p>
+                </div>
+                <div class="text-center">
+                    <h3 id="best-solution">-</h3>
+                    <p>Mejor Solución</p>
+                </div>
+                <div class="text-center">
+                    <h3 id="total-solutions">-</h3>
+                    <p>Total Soluciones</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Competition Rules -->
+        <div class="card">
+            <h2>📋 Reglas del Ranking</h2>
+            <div class="grid grid-2">
+                <div>
+                    <h3>Criterios de Ordenación:</h3>
+                    <ol>
+                        <li><strong>Valor objetivo:</strong> Menor valor es mejor</li>
+                        <li><strong>Fecha de envío:</strong> En caso de empate, la más antigua gana (primera en conseguir dicho valor)</li>
+                        <li><strong>Solo mejor solución:</strong> Se muestra únicamente tu mejor resultado</li>
+                    </ol>
+                </div>
+                <div>
+                    <h3>Actualización:</h3>
+                    <ul>
+                        <li>🔄 El ranking se actualiza automáticamente</li>
+                        <li>⏱️ Cambios visibles inmediatamente tras envío</li>
+                        <li>🎯 Las mejoras personales se reflejan al instante</li>
+                        <li>❄️ Puede congelarse temporalmente</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Universidad Rey Juan Carlos - TopABII Platform</p>
+    </footer>
+
+    <script src="app.js"></script>
+    <script src="ranking.js"></script>
+</body>
+</html>

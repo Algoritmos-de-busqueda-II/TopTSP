@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - TopABII</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div>
+                    <h1>TopABII</h1>
+                    <div class="logo-subtitle">Panel de Administración - Universidad Rey Juan Carlos</div>
+                </div>
+            </div>
+            <nav class="nav">
+                <a href="/">Inicio</a>
+                <a href="/ranking">Ranking</a>
+                <a href="/user">Subir Solución</a>
+                <a href="/admin" class="active">Administración</a>
+                <a href="#" onclick="logout()">Cerrar Sesión</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="alert-container"></div>
+
+        <div class="grid grid-2">
+            <!-- Create Users Card -->
+            <div class="card">
+                <h2>Crear Usuarios</h2>
+                <p>Introduce los correos electrónicos separados por punto y coma (;)</p>
+                
+                <form id="create-users-form">
+                    <div class="form-group">
+                        <label for="emails">Correos Electrónicos:</label>
+                        <textarea id="emails" name="emails" class="form-control" rows="4" 
+                                  placeholder="usuario1@urjc.es; usuario2@urjc.es; usuario3@urjc.es" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Crear Usuarios</button>
+                </form>
+            </div>
+
+            <!-- TSP Instance Card -->
+            <div class="card">
+                <h2>Gestionar Instancia TSP</h2>
+                
+                <!-- Current Instance Status -->
+                <div id="current-instance-status" class="mb-3">
+                    <div id="instance-loading">Cargando información de instancia...</div>
+                    <div id="instance-exists" class="hidden">
+                        <div class="alert alert-info">
+                            <strong>Instancia Actual:</strong><br>
+                            <span id="current-instance-info"></span>
+                        </div>
+                        <p><strong>⚠️ Atención:</strong> Si subes una nueva instancia, se eliminará todo el ranking y las soluciones actuales.</p>
+                    </div>
+                    <div id="no-instance" class="hidden">
+                        <div class="alert alert-warning">
+                            <strong>No hay instancia TSP configurada.</strong><br>
+                            Sube una instancia para comenzar la competición.
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="tsp-form">
+                    <div class="form-group">
+                        <label for="tsp-data">Datos TSP (Formato TSPLIB):</label>
+                        <textarea id="tsp-data" name="tspData" class="form-control" rows="12" 
+                                  placeholder="NAME: berlin52&#10;TYPE: TSP&#10;COMMENT: 52 locations in Berlin&#10;DIMENSION: 52&#10;EDGE_WEIGHT_TYPE: EUC_2D&#10;NODE_COORD_SECTION&#10;1 565.0 575.0&#10;2 25.0 185.0&#10;...&#10;EOF" required></textarea>
+                        <small>Pega aquí los datos en formato TSPLIB estándar</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        <span id="upload-btn-text">Subir Instancia TSP</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="grid grid-3">
+            <!-- Admin Solution Submission -->
+            <div class="card">
+                <h2>Subir Solución como Admin</h2>
+                <p>También puedes participar enviando soluciones</p>
+                
+                <form id="admin-solution-form">
+                    <div class="form-group">
+                        <label for="admin-solution">Solución:</label>
+                        <input type="text" id="admin-solution" name="solution" class="form-control" 
+                               placeholder="1, 2, 3, 4, 5" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Enviar Solución</button>
+                </form>
+            </div>
+            
+            <!-- Ranking Control Card -->
+            <div class="card">
+                <h2>Control de Ranking</h2>
+                <p>Gestiona la visualización y los datos del ranking</p>
+                
+                <div class="form-group">
+                    <div id="ranking-status" class="mb-2">
+                        <span class="status-indicator status-online"></span>
+                        <span>Ranking visible</span>
+                    </div>
+                    
+                    <div class="grid grid-2">
+                        <button id="toggle-ranking-btn" class="btn btn-secondary" onclick="toggleRanking()">
+                            Congelar Ranking
+                        </button>
+                        
+                        <button id="reset-ranking-btn" class="btn btn-danger" onclick="resetRanking()">
+                            🗑️ Reiniciar Ranking
+                        </button>
+                    </div>
+                    
+                    <small class="mt-2">
+                        <strong>Reiniciar:</strong> Elimina todas las soluciones y resetea el ranking completamente.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Export Data Card -->
+            <div class="card">
+                <h2>Exportar Datos</h2>
+                <p>Descarga un archivo CSV con todas las soluciones subidas</p>
+                
+                <button class="btn btn-success" onclick="exportCSV()">
+                    📁 Descargar CSV
+                </button>
+                
+                <div class="mt-2">
+                    <small>El archivo incluye: usuario, solución, valor objetivo, fecha/hora, validez</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Competition Configuration -->
+        <div class="card">
+            <h2>Configuración de la Competición</h2>
+            
+            <div class="grid grid-2">
+                <div>
+                    <h3>Nombre de la Instancia:</h3>
+                    <div class="form-group">
+                        <input type="text" id="instance-name-input" class="form-control" 
+                               placeholder="Berlin 52" required>
+                        <button class="btn btn-primary btn-block mt-2" onclick="setInstanceName()">
+                            Actualizar Nombre
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <h3>Fecha y Hora de Cierre:</h3>
+                    <div class="form-group">
+                        <input type="datetime-local" id="end-date-input" class="form-control">
+                        <div class="grid grid-2 mt-2">
+                            <button class="btn btn-primary" onclick="setEndDate()">
+                                Establecer Fecha
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearEndDate()">
+                                Quitar Fecha
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Management -->
+        <div class="card">
+            <h2>Gestión de Usuarios</h2>
+            <p>Administra los usuarios de la competición</p>
+            
+            <div class="mb-3">
+                <button class="btn btn-primary" onclick="loadUsers()">🔄 Actualizar Lista</button>
+            </div>
+            
+            <div id="users-table-container">
+                <table class="table" id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Estado</th>
+                            <th>Mejor Solución</th>
+                            <th>Fecha Mejor</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody">
+                        <tr>
+                            <td colspan="5" class="text-center">Haz clic en "Actualizar Lista" para cargar usuarios</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 Universidad Rey Juan Carlos - TopABII Platform</p>
+    </footer>
+
+    <script src="app.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
