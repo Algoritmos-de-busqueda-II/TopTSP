@@ -559,17 +559,15 @@ app.get('/api/admin/users', requireAdmin, (req, res) => {
 
 // Reset user password (admin only)
 app.post('/api/admin/reset-password', requireAdmin, (req, res) => {
-    const { userId } = req.body;
-    const bcrypt = require('bcrypt');
-    const defaultPassword = bcrypt.hashSync('password', 10);
-    
+    const { userId, email } = req.body;
+    if (!userId || !email) {
+        return res.status(400).json({ error: 'Faltan datos' });
+    }
     const db = getDatabase();
-    
-    db.run('UPDATE users SET password = ?, first_login = 1 WHERE id = ? AND is_admin = 0', 
-        [defaultPassword, userId], (err) => {
-        db.close();
+    const hashedPassword = bcrypt.hashSync(email, 10);
+    db.run('UPDATE users SET password = ?, first_login = TRUE WHERE id = ?', [hashedPassword, userId], (err) => {
         if (err) {
-            return res.status(500).json({ error: 'Database error' });
+            return res.status(500).json({ error: 'Error al actualizar la contraseña' });
         }
         res.json({ success: true });
     });
@@ -907,7 +905,7 @@ function parseTSPLIB(tspData) {
 // Initialize database and start server
 initializeDatabase().then(() => {
     app.listen(PORT, () => {
-        console.log(`TopABII server running on port ${PORT}`);
+        console.log(`TopTSP server running on port ${PORT}`);
         console.log(`Access the application at http://localhost:${PORT}`);
     });
 }).catch(err => {

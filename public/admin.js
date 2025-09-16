@@ -263,7 +263,7 @@ async function exportCSV() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'topabii-export.csv';
+            a.download = 'topcsv-export.csv';
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -648,7 +648,7 @@ function populateUsersTable(users) {
             <td>${lastUpdate}</td>
             <td>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-warning" onclick="resetUserPassword(${user.id})">
+                    <button class="btn btn-sm btn-warning" onclick="resetUserPassword(${user.id}, '${user.email}')">
                         🔑 Reset
                     </button>
                     <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, '${user.email}')">
@@ -662,26 +662,22 @@ function populateUsersTable(users) {
     });
 }
 
-async function resetUserPassword(userId) {
-    if (!confirm('¿Estás seguro de que quieres reiniciar la contraseña de este usuario? La nueva contraseña será "password".')) {
+async function resetUserPassword(userId, email) {
+    if (!confirm(`¿Estás seguro de que quieres reiniciar la contraseña de este usuario? La nueva contraseña será su correo electrónico: "${email}".`)) {
         return;
     }
-    
     clearAlerts('alert-container');
-    
     try {
         const response = await fetch('/api/admin/reset-password', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ userId })
+            body: JSON.stringify({ userId, email })
         });
-        
         const data = await response.json();
-        
         if (response.ok) {
-            showAlert('alert-container', 'Contraseña reiniciada exitosamente. Nueva contraseña: "password"', 'success');
+            showAlert('alert-container', `Contraseña reiniciada exitosamente. Nueva contraseña: "${email}"`, 'success');
             await loadUsers(); // Reload users table
         } else {
             showAlert('alert-container', data.error || 'Error al reiniciar contraseña', 'danger');
