@@ -32,7 +32,11 @@
             <h2>Bienvenido a TopTSP</h2>
 
             <div class="mb-3 text-center competition-info">
-                <h3>Competición Actual: <span id="instance-name">Berlin 52</span></h3>
+                <h3 id="competition-title">Competición Actual: <span id="instance-name">Berlin 52</span></h3>
+                <div id="no-competition" style="display: none;">
+                    <h3>⚠️ No hay competición disponible</h3>
+                    <p>Todavía no hay una instancia TSP cargada. Espera a que el administrador configure una competición.</p>
+                </div>
                 <div id="countdown" class="countdown-timer">⏰ Cargando...</div>
                 <div id="end-date" class="end-date-info"></div>
             </div>
@@ -48,7 +52,9 @@
                 <li><strong>Obtén acceso:</strong> Los administradores pueden crear tu cuenta de usuario.</li>
                 <li><strong>Inicia sesión:</strong> Utiliza tu correo electrónico como usuario y contraseña inicial.</li>
                 <li><strong>Cambia tu contraseña:</strong> En tu primer acceso deberás establecer una nueva contraseña.</li>
-                <li><strong>Sube tu solución:</strong> Introduce tu solución en el formato: 1, 2, 3, 4, 5, ...</li>
+                <li><strong>Descarga la instancia:</strong> Ve al <a href="/ranking">ranking</a> y descarga la instancia TSP actual con el botón 📥 junto al nombre.</li>
+                <li><strong>Desarrolla tu algoritmo:</strong> Implementa tu solución para el TSP usando el algoritmo que prefieras (heurístico, metaheurístico, etc.).</li>
+                <li><strong>Sube tu solución:</strong> Introduce tu solución en el formato: 1, 2, 3, 4, 5, ... e indica el método utilizado.</li>
                 <li><strong>Compite:</strong> Tu mejor solución aparecerá automáticamente en el ranking.</li>
             </ol>
             <div class="grid grid-2 mt-3">

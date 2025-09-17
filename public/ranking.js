@@ -1,16 +1,41 @@
 document.addEventListener('DOMContentLoaded', async function() {
     await loadRanking();
-    
+
     // Auto-refresh ranking every 30 seconds
     setInterval(loadRanking, 30000);
 });
+
+async function checkInstanceAvailability() {
+    try {
+        const response = await fetch('/api/current-instance');
+        if (response.ok) {
+            const data = await response.json();
+            return data.hasInstance;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error checking instance availability:', error);
+        return false;
+    }
+}
 
 async function loadRanking() {
     const loadingMessage = document.getElementById('loading-message');
     const frozenMessage = document.getElementById('frozen-message');
     const rankingTableContainer = document.getElementById('ranking-table-container');
     const emptyMessage = document.getElementById('empty-message');
-    
+
+    // Check if there's an instance available
+    const hasInstance = await checkInstanceAvailability();
+    if (!hasInstance) {
+        // Hide all ranking-related elements when no instance
+        loadingMessage.classList.add('hidden');
+        frozenMessage.classList.add('hidden');
+        rankingTableContainer.classList.add('hidden');
+        emptyMessage.classList.add('hidden');
+        return;
+    }
+
     try {
         const response = await fetch('/api/ranking');
         
@@ -103,13 +128,17 @@ function populateRankingTable(ranking) {
             row.classList.add('rank-3');
         }
         
+        // Remove the @ part from email (including @)
+        const displayEmail = entry.email.split('@')[0];
+
         row.innerHTML = `
             <td>
                 <strong>#${index + 1}</strong>
                 ${index === 0 ? ' 🥇' : index === 1 ? ' 🥈' : index === 2 ? ' 🥉' : ''}
             </td>
-            <td>${sanitizeHtml(entry.email)}</td>
+            <td>${sanitizeHtml(displayEmail)}</td>
             <td><strong>${formatObjectiveValue(entry.best_objective_value)}</strong></td>
+            <td>${sanitizeHtml(entry.best_method || '-')}</td>
             <td>${formatDate(entry.last_improvement)}</td>
             <td>${entry.total_submissions || 0}</td>
         `;
@@ -147,4 +176,9 @@ function sanitizeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function downloadInstance() {
+    // Create a temporary link to trigger download
+    window.location.href = '/api/download-instance';
 }

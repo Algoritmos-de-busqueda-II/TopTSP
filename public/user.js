@@ -17,6 +17,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('admin-link').classList.remove('hidden');
     }
     
+    // Check if there's a current instance available
+    await checkInstanceAvailability();
+
     // Load user statistics and solution history
     await loadUserStats();
     await loadSolutionHistory();
@@ -28,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         const formData = new FormData(solutionForm);
         const solution = formData.get('solution').trim();
+        const method = formData.get('method').trim();
         
         if (!solution) {
             showAlert('alert-container', 'Por favor, introduce una solución.', 'danger');
@@ -50,7 +54,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ solution })
+                body: JSON.stringify({ solution, method })
             });
             
             const data = await response.json();
@@ -195,6 +199,7 @@ async function loadSolutionHistory() {
                     row.innerHTML = `
                         <td>${solution.solution}</td>
                         <td><strong>${formatObjectiveValue(solution.objective_value)}</strong></td>
+                        <td>${solution.method || '-'}</td>
                         <td>
                             <span class="status-indicator ${solution.is_valid ? 'status-online' : 'status-offline'}"></span>
                             ${solution.is_valid ? 'Válida' : 'Inválida'}
@@ -229,4 +234,28 @@ function hidePasswordModal() {
     const modal = document.getElementById('password-modal');
     document.body.style.overflow = '';
     modal.classList.add('hidden');
+}
+
+async function checkInstanceAvailability() {
+    try {
+        const response = await fetch('/api/current-instance');
+        if (response.ok) {
+            const data = await response.json();
+
+            const formContainer = document.getElementById('solution-form-container');
+            const noInstanceMessage = document.getElementById('no-instance-message');
+
+            if (data.hasInstance) {
+                // Instance available - show form
+                formContainer.style.display = '';
+                noInstanceMessage.style.display = 'none';
+            } else {
+                // No instance - hide form and show message
+                formContainer.style.display = 'none';
+                noInstanceMessage.style.display = '';
+            }
+        }
+    } catch (error) {
+        console.error('Error checking instance availability:', error);
+    }
 }

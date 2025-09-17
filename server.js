@@ -34,8 +34,8 @@ app.use(session({
     secret: 'topabii-urjc-secret-key-2024',
     resave: false,
     saveUninitialized: false,
-    cookie: { 
-        secure: true,  // Cambiar a true para HTTPS
+    cookie: {
+        secure: useHttps,  // Only secure cookies when using HTTPS
         maxAge: 24 * 60 * 60 * 1000,  // 24 hours
         httpOnly: true,
         sameSite: 'strict'
@@ -300,7 +300,7 @@ app.post('/api/admin/reset-ranking', requireAdmin, (req, res) => {
 
 // Submit solution endpoint
 app.post('/api/submit-solution', requireAuth, (req, res) => {
-    const { solution } = req.body;
+    const { solution, method } = req.body;
     
     if (!solution) {
         return res.status(400).json({ error: 'Solution required' });
@@ -328,7 +328,7 @@ app.post('/api/submit-solution', requireAuth, (req, res) => {
         db.get('SELECT value FROM system_settings WHERE key = ?', ['current_tsp_instance'], (err, setting) => {
             if (err || !setting) {
                 db.close();
-                return res.status(500).json({ error: 'No TSP instance available' });
+                return res.status(400).json({ error: 'No hay una instancia TSP disponible actualmente. Contacta con el administrador.' });
             }
             
             const tspInstanceId = parseInt(setting.value);
@@ -337,7 +337,7 @@ app.post('/api/submit-solution', requireAuth, (req, res) => {
         db.get('SELECT * FROM tsp_instances WHERE id = ?', [tspInstanceId], (err, instance) => {
             if (err || !instance) {
                 db.close();
-                return res.status(500).json({ error: 'TSP instance not found' });
+                return res.status(400).json({ error: 'La instancia TSP configurada no existe. Contacta con el administrador.' });
             }
             
             const nodes = instance.dimension;
@@ -356,8 +356,9 @@ app.post('/api/submit-solution', requireAuth, (req, res) => {
             const objectiveValue = calculateObjectiveValue(solutionArray, distanceMatrix);
             
             // Insert solution
-            db.run('INSERT INTO solutions (user_id, tsp_instance_id, solution, objective_value, is_valid) VALUES (?, ?, ?, ?, ?)',
-                [req.session.user.id, tspInstanceId, solution, objectiveValue, true], function(err) {
+            const methodValue = method && method.length <= 10 ? method.trim() : '';
+            db.run('INSERT INTO solutions (user_id, tsp_instance_id, solution, objective_value, is_valid, method) VALUES (?, ?, ?, ?, ?, ?)',
+                [req.session.user.id, tspInstanceId, solution, objectiveValue, true, methodValue], function(err) {
                 if (err) {
                     db.close();
                     return res.status(500).json({ error: 'Error saving solution' });
@@ -366,7 +367,7 @@ app.post('/api/submit-solution', requireAuth, (req, res) => {
                 const solutionId = this.lastID;
                 
                 // Update user's best solution
-                updateUserBestSolution(db, req.session.user.id, solutionId, objectiveValue, (err, improved) => {
+                updateUserBestSolution(db, req.session.user.id, solutionId, objectiveValue, methodValue, (err, improved) => {
                     db.close();
                     if (err) {
                         return res.status(500).json({ error: 'Error updating best solution' });
@@ -438,9 +439,10 @@ app.get('/api/ranking', (req, res) => {
         
         // Get current ranking
         db.all(`
-            SELECT 
+            SELECT
                 u.email,
                 ubs.best_objective_value,
+                ubs.best_method,
                 ubs.last_improvement,
                 ubs.total_submissions
             FROM user_best_solutions ubs
@@ -533,6 +535,67 @@ app.post('/api/admin/set-instance-name', requireAdmin, (req, res) => {
             return res.status(500).json({ error: 'Database error' });
         }
         res.json({ success: true });
+    });
+});
+
+// Download current TSP instance
+app.get('/api/download-instance', (req, res) => {
+    const db = getDatabase();
+
+    db.get('SELECT value FROM system_settings WHERE key = ?', ['current_tsp_instance'], (err, setting) => {
+        if (err || !setting) {
+            db.close();
+            return res.status(404).json({ error: 'No current TSP instance found' });
+        }
+
+        const tspInstanceId = parseInt(setting.value);
+
+        db.get('SELECT * FROM tsp_instances WHERE id = ?', [tspInstanceId], (err, instance) => {
+            db.close();
+            if (err || !instance) {
+                return res.status(404).json({ error: 'TSP instance not found' });
+            }
+
+            // Set headers for file download
+            res.setHeader('Content-Type', 'text/plain');
+            res.setHeader('Content-Disposition', `attachment; filename="${instance.name.replace(/\s+/g, '_')}.txt"`);
+
+            // Send the original data
+            res.send(instance.original_data);
+        });
+    });
+});
+
+// Check if current TSP instance exists
+app.get('/api/current-instance', (req, res) => {
+    const db = getDatabase();
+
+    db.get('SELECT value FROM system_settings WHERE key = ?', ['current_tsp_instance'], (err, setting) => {
+        if (err || !setting) {
+            db.close();
+            return res.json({ hasInstance: false });
+        }
+
+        const tspInstanceId = parseInt(setting.value);
+
+        db.get('SELECT * FROM tsp_instances WHERE id = ?', [tspInstanceId], (err, instance) => {
+            db.close();
+            if (err || !instance) {
+                return res.json({ hasInstance: false });
+            }
+
+            res.json({
+                hasInstance: true,
+                instance: {
+                    id: instance.id,
+                    name: instance.name,
+                    dimension: instance.dimension,
+                    type: instance.type,
+                    comment: instance.comment,
+                    created_at: instance.created_at
+                }
+            });
+        });
     });
 });
 
@@ -631,10 +694,11 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
     const db = getDatabase();
     
     db.all(`
-        SELECT 
+        SELECT
             u.email,
             s.solution,
             s.objective_value,
+            s.method,
             s.submitted_at,
             s.is_valid
         FROM solutions s
@@ -652,6 +716,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
                 { id: 'email', title: 'Email' },
                 { id: 'solution', title: 'Solution' },
                 { id: 'objective_value', title: 'Objective Value' },
+                { id: 'method', title: 'Method' },
                 { id: 'submitted_at', title: 'Submitted At' },
                 { id: 'is_valid', title: 'Valid' }
             ]
@@ -682,9 +747,10 @@ app.get('/api/user/solutions', requireAuth, (req, res) => {
     const db = getDatabase();
     
     db.all(`
-        SELECT 
+        SELECT
             s.solution,
             s.objective_value,
+            s.method,
             s.is_valid,
             s.submitted_at
         FROM solutions s
@@ -754,7 +820,7 @@ function calculateObjectiveValue(solution, distanceMatrix) {
     return totalDistance;
 }
 
-function updateUserBestSolution(db, userId, solutionId, objectiveValue, callback) {
+function updateUserBestSolution(db, userId, solutionId, objectiveValue, method, callback) {
     db.get('SELECT * FROM user_best_solutions WHERE user_id = ?', [userId], (err, existing) => {
         if (err) {
             return callback(err, false);
@@ -762,8 +828,8 @@ function updateUserBestSolution(db, userId, solutionId, objectiveValue, callback
         
         if (!existing) {
             // First solution for this user
-            db.run('INSERT INTO user_best_solutions (user_id, best_solution_id, best_objective_value, total_submissions, last_improvement) VALUES (?, ?, ?, ?, ?)',
-                [userId, solutionId, objectiveValue, 1, new Date().toISOString()], (err) => {
+            db.run('INSERT INTO user_best_solutions (user_id, best_solution_id, best_objective_value, best_method, total_submissions, last_improvement) VALUES (?, ?, ?, ?, ?, ?)',
+                [userId, solutionId, objectiveValue, method, 1, new Date().toISOString()], (err) => {
                 callback(err, true);
             });
         } else {
@@ -771,17 +837,19 @@ function updateUserBestSolution(db, userId, solutionId, objectiveValue, callback
             let improved = false;
             let newBestId = existing.best_solution_id;
             let newBestValue = existing.best_objective_value;
+            let newBestMethod = existing.best_method;
             let lastImprovement = existing.last_improvement;
-            
+
             if (existing.best_objective_value === null || objectiveValue < existing.best_objective_value) {
                 improved = true;
                 newBestId = solutionId;
                 newBestValue = objectiveValue;
+                newBestMethod = method;
                 lastImprovement = new Date().toISOString();
             }
-            
-            db.run('UPDATE user_best_solutions SET best_solution_id = ?, best_objective_value = ?, total_submissions = ?, last_improvement = ? WHERE user_id = ?',
-                [newBestId, newBestValue, existing.total_submissions + 1, lastImprovement, userId], (err) => {
+
+            db.run('UPDATE user_best_solutions SET best_solution_id = ?, best_objective_value = ?, best_method = ?, total_submissions = ?, last_improvement = ? WHERE user_id = ?',
+                [newBestId, newBestValue, newBestMethod, existing.total_submissions + 1, lastImprovement, userId], (err) => {
                 callback(err, improved);
             });
         }
@@ -794,9 +862,10 @@ function saveRankingSnapshot(callback) {
     
     // Get current ranking and stats
     db.all(`
-        SELECT 
+        SELECT
             u.email,
             ubs.best_objective_value,
+            ubs.best_method,
             ubs.last_improvement,
             ubs.total_submissions
         FROM user_best_solutions ubs

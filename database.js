@@ -48,6 +48,7 @@ function initializeDatabase() {
                 solution TEXT NOT NULL,
                 objective_value REAL,
                 is_valid BOOLEAN,
+                method TEXT DEFAULT '',
                 submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (id),
                 FOREIGN KEY (tsp_instance_id) REFERENCES tsp_instances (id)
@@ -58,6 +59,7 @@ function initializeDatabase() {
                 user_id INTEGER PRIMARY KEY,
                 best_solution_id INTEGER,
                 best_objective_value REAL,
+                best_method TEXT DEFAULT '',
                 total_submissions INTEGER DEFAULT 0,
                 last_improvement DATETIME,
                 FOREIGN KEY (user_id) REFERENCES users (id),
@@ -82,6 +84,20 @@ function initializeDatabase() {
             db.run(`INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)`, ['frozen_ranking_timestamp', '']);
             db.run(`INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)`, ['competition_end_date', '']);
             db.run(`INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)`, ['instance_name', 'Berlin 52']);
+
+            // Add method column to existing solutions table if it doesn't exist
+            db.run(`ALTER TABLE solutions ADD COLUMN method TEXT DEFAULT ''`, (err) => {
+                if (err && !err.message.includes('duplicate column name')) {
+                    console.error('Error adding method column:', err);
+                }
+            });
+
+            // Add best_method column to existing user_best_solutions table if it doesn't exist
+            db.run(`ALTER TABLE user_best_solutions ADD COLUMN best_method TEXT DEFAULT ''`, (err) => {
+                if (err && !err.message.includes('duplicate column name')) {
+                    console.error('Error adding best_method column:', err);
+                }
+            });
         });
 
         db.close((err) => {

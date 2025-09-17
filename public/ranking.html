@@ -29,7 +29,11 @@
 
     <main class="container">
         <div class="card fade-in">
-            <h2>🏆 Competición Actual: <span id="instance-name">Berlin 52</span></h2>
+            <h2 id="competition-title">🏆 Competición Actual: <span id="instance-name">Berlin 52</span> <button id="download-instance-btn" onclick="downloadInstance()" class="btn btn-primary btn-sm" title="Descargar instancia">📥</button></h2>
+            <div id="no-competition" style="display: none;">
+                <h2>⚠️ No hay competición disponible</h2>
+                <p>Todavía no hay una instancia TSP cargada. Espera a que el administrador configure una competición.</p>
+            </div>
             
             <div class="mb-3 text-center">
                 <div id="countdown" class="countdown-timer">⏰ Cargando...</div>
@@ -60,6 +64,7 @@
                             <th>Posición</th>
                             <th>Usuario</th>
                             <th>Mejor Valor</th>
+                            <th>Método</th>
                             <th>Fecha/Hora</th>
                             <th>Total Envíos</th>
                         </tr>

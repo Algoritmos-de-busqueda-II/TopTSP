@@ -182,38 +182,78 @@ function updateNavigation() {
 }
 
 function updateCountdown() {
-    fetch('/api/system-settings')
-        .then(response => response.json())
-        .then(settings => {
+    Promise.all([
+        fetch('/api/system-settings').then(r => r.json()),
+        fetch('/api/current-instance').then(r => r.json())
+    ])
+        .then(([settings, instanceData]) => {
             const endDate = settings.competition_end_date;
             const instanceName = settings.instance_name || 'Berlin 52';
-            
+
             // Update instance name if element exists
             const instanceNameElement = document.getElementById('instance-name');
-            if (instanceNameElement) {
-                instanceNameElement.textContent = instanceName;
+            const competitionTitleElement = document.getElementById('competition-title');
+            const noCompetitionElement = document.getElementById('no-competition');
+            const downloadBtn = document.getElementById('download-instance-btn');
+
+            if (instanceData.hasInstance) {
+                // There is an instance available
+                if (instanceNameElement) {
+                    instanceNameElement.textContent = instanceName;
+                }
+                if (competitionTitleElement) {
+                    competitionTitleElement.style.display = '';
+                }
+                if (noCompetitionElement) {
+                    noCompetitionElement.style.display = 'none';
+                }
+                if (downloadBtn) {
+                    downloadBtn.style.display = '';
+                }
+            } else {
+                // No instance available
+                if (competitionTitleElement) {
+                    competitionTitleElement.style.display = 'none';
+                }
+                if (noCompetitionElement) {
+                    noCompetitionElement.style.display = '';
+                }
+                if (downloadBtn) {
+                    downloadBtn.style.display = 'none';
+                }
             }
             
+            const countdownElement = document.getElementById('countdown');
+            const endDateElement = document.getElementById('end-date');
+
             if (endDate) {
                 const endDateTime = new Date(endDate);
                 const now = new Date();
                 const timeDiff = endDateTime - now;
-                
-                const countdownElement = document.getElementById('countdown');
-                const endDateElement = document.getElementById('end-date');
-                
+
                 if (countdownElement && endDateElement) {
+                    countdownElement.style.display = '';
+                    endDateElement.style.display = '';
+
                     if (timeDiff > 0) {
                         const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
                         const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                         const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-                        
+
                         countdownElement.innerHTML = `⏰ <strong>${days}d ${hours}h ${minutes}m</strong> hasta el cierre`;
                         endDateElement.textContent = `Cierre: ${endDateTime.toLocaleString('es-ES')}`;
                     } else {
                         countdownElement.innerHTML = '⏰ <strong>Competición finalizada</strong>';
                         endDateElement.textContent = `Cerró: ${endDateTime.toLocaleString('es-ES')}`;
                     }
+                }
+            } else {
+                // Hide countdown elements when no end date is set
+                if (countdownElement) {
+                    countdownElement.style.display = 'none';
+                }
+                if (endDateElement) {
+                    endDateElement.style.display = 'none';
                 }
             }
         })

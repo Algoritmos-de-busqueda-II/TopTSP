@@ -67,17 +67,32 @@
         <!-- Submit Solution Card -->
         <div class="card">
             <h2>Subir Solución TSP</h2>
-            <p>Introduce tu solución en el formato: 1, 2, 3, 4, 5, ...</p>
-            
-            <form id="solution-form">
-                <div class="form-group">
-                    <label for="solution">Solución:</label>
-                    <input type="text" id="solution" name="solution" class="form-control" 
-                           placeholder="1, 2, 3, 4, 5" required>
-                    <small>Introduce los números de los nodos separados por comas</small>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">Enviar Solución</button>
-            </form>
+
+            <div id="solution-form-container">
+                <p>Introduce tu solución en el formato: 1, 2, 3, 4, 5, ...</p>
+
+                <form id="solution-form">
+                    <div class="form-group">
+                        <label for="solution">Solución:</label>
+                        <input type="text" id="solution" name="solution" class="form-control"
+                               placeholder="1, 2, 3, 4, 5" required>
+                        <small>Introduce los números de los nodos separados por comas</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="method">Método (opcional):</label>
+                        <input type="text" id="method" name="method" class="form-control"
+                               placeholder="Ej: GA, SA, ACO" maxlength="10">
+                        <small>Máximo 10 caracteres. Describe el método o algoritmo utilizado</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Enviar Solución</button>
+                </form>
+            </div>
+
+            <div id="no-instance-message" class="text-center" style="display: none;">
+                <h3>⚠️ No hay competición disponible</h3>
+                <p>Todavía no hay una instancia TSP cargada. No puedes enviar soluciones hasta que el administrador configure una competición.</p>
+                <p>Consulta con el administrador para más información.</p>
+            </div>
         </div>
 
         <!-- Solution History Card -->
@@ -95,6 +110,7 @@
                         <tr>
                             <th>Solución</th>
                             <th>Valor Objetivo</th>
+                            <th>Método</th>
                             <th>Estado</th>
                             <th>Fecha/Hora</th>
                         </tr>
