@@ -9,12 +9,22 @@ const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
 const app = express();
 const PORT = process.env.PORT || 443;
-
-// SSL Certificate configuration
-const sslOptions = {
-    key: fs.readFileSync('/home/vmuser/abii.gia.etsii.urjc.es.key'),
-    cert: fs.readFileSync('/home/vmuser/abii.gia.etsii.urjc.es.pem')
-};
+const LOCAL_PORT = 3000;
+const SSL_KEY_PATH = '/home/vmuser/abii.gia.etsii.urjc.es.key';
+const SSL_CERT_PATH = '/home/vmuser/abii.gia.etsii.urjc.es.pem';
+let sslOptions = null;
+let useHttps = false;
+try {
+    if (fs.existsSync(SSL_KEY_PATH) && fs.existsSync(SSL_CERT_PATH)) {
+        sslOptions = {
+            key: fs.readFileSync(SSL_KEY_PATH),
+            cert: fs.readFileSync(SSL_CERT_PATH)
+        };
+        useHttps = true;
+    }
+} catch (err) {
+    console.error('Error loading SSL certificates:', err);
+}
 
 // Middleware
 app.use(express.json());
@@ -916,10 +926,17 @@ function parseTSPLIB(tspData) {
 
 // Initialize database and start HTTPS server
 initializeDatabase().then(() => {
-    https.createServer(sslOptions, app).listen(PORT, () => {
-        console.log(`TopTSP HTTPS server running on port ${PORT}`);
-        console.log(`Access the application at https://abii.gia.etsii.urjc.es:${PORT}`);
-    });
+    if (useHttps) {
+        https.createServer(sslOptions, app).listen(PORT, () => {
+            console.log(`TopTSP HTTPS server running on port ${PORT}`);
+            console.log(`Access the application at https://abii.gia.etsii.urjc.es:${PORT}`);
+        });
+    } else {
+        app.listen(LOCAL_PORT, () => {
+            console.log(`TopTSP HTTP server running on port ${LOCAL_PORT}`);
+            console.log(`Access the application at http://localhost:${LOCAL_PORT}`);
+        });
+    }
 }).catch(err => {
     console.error('Failed to initialize database:', err);
     process.exit(1);
