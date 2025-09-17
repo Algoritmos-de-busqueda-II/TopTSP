@@ -1,6 +1,6 @@
-# TopABII - Plataforma de Competición TSP
+# TopTSP - Plataforma de Competición TSP
 
-TopABII es una aplicación web desarrollada para la Universidad Rey Juan Carlos que permite la gestión de competiciones del Problema del Viajante de Comercio (TSP).
+TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos que permite la gestión de competiciones del Problema del Viajante de Comercio (TSP).
 
 ## Características Principales
 
