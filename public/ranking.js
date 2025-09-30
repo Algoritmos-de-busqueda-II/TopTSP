@@ -19,6 +19,22 @@ async function checkInstanceAvailability() {
     }
 }
 
+function updateInstanceButtons(hasInstance) {
+    const competitionTitle = document.getElementById('competition-title');
+    const rankingButtons = document.getElementById('ranking-buttons');
+    const noCompetition = document.getElementById('no-competition');
+
+    if (hasInstance) {
+        if (competitionTitle) competitionTitle.style.display = '';
+        if (rankingButtons) rankingButtons.style.display = '';
+        if (noCompetition) noCompetition.style.display = 'none';
+    } else {
+        if (competitionTitle) competitionTitle.style.display = 'none';
+        if (rankingButtons) rankingButtons.style.display = 'none';
+        if (noCompetition) noCompetition.style.display = '';
+    }
+}
+
 async function loadRanking() {
     const loadingMessage = document.getElementById('loading-message');
     const frozenMessage = document.getElementById('frozen-message');
@@ -27,6 +43,7 @@ async function loadRanking() {
 
     // Check if there's an instance available
     const hasInstance = await checkInstanceAvailability();
+    updateInstanceButtons(hasInstance);
     if (!hasInstance) {
         // Hide all ranking-related elements when no instance
         loadingMessage.classList.add('hidden');
@@ -179,6 +196,9 @@ function sanitizeHtml(text) {
 }
 
 function downloadInstance() {
-    // Create a temporary link to trigger download
     window.location.href = '/api/download-instance';
+}
+
+function visualizeInstance() {
+    window.open('/visualize', '_blank');
 }

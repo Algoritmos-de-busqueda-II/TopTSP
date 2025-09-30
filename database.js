@@ -75,7 +75,7 @@ function initializeDatabase() {
             // Create admin user
             const adminPassword = bcrypt.hashSync('admin', 10);
             db.run(`INSERT OR IGNORE INTO users (email, password, is_admin, first_login) VALUES (?, ?, ?, ?)`,
-                ['sergio.cavero@urjc.es', adminPassword, true, true]);
+                ['admin@urjc.es', adminPassword, true, true]);
 
             // Set default system settings
             db.run(`INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)`, ['ranking_frozen', 'false']);

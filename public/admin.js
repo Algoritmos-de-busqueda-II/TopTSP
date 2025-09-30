@@ -16,59 +16,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadCurrentTSPInstance();
     await loadSystemSettings();
     
-    // Admin solution form handler
-    const adminSolutionForm = document.getElementById('admin-solution-form');
-    adminSolutionForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        clearAlerts('alert-container');
-        
-        const formData = new FormData(adminSolutionForm);
-        const solution = formData.get('solution').trim();
-        
-        if (!solution) {
-            showAlert('alert-container', 'Por favor, introduce una solución.', 'danger');
-            return;
-        }
-        
-        // Validate solution format
-        const validation = validateTSPSolution(solution);
-        if (!validation.valid) {
-            showAlert('alert-container', validation.error, 'danger');
-            return;
-        }
-        
-        const submitBtn = adminSolutionForm.querySelector('button[type="submit"]');
-        setLoading(submitBtn, true);
-        
-        try {
-            const response = await fetch('/api/submit-solution', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ solution })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                const message = data.improved 
-                    ? `¡Excelente! Nueva mejor solución con valor ${formatObjectiveValue(data.objectiveValue)}` 
-                    : `Solución enviada (valor: ${formatObjectiveValue(data.objectiveValue)}). No mejoró tu mejor resultado.`;
-                
-                showAlert('alert-container', message, data.improved ? 'success' : 'info');
-                adminSolutionForm.reset();
-            } else {
-                showAlert('alert-container', data.error || 'Error al enviar la solución', 'danger');
-            }
-        } catch (error) {
-            console.error('Solution submission error:', error);
-            showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
-        } finally {
-            setLoading(submitBtn, false);
-        }
-    });
-    
     // Create users form handler
     const createUsersForm = document.getElementById('create-users-form');
     createUsersForm.addEventListener('submit', async function(e) {

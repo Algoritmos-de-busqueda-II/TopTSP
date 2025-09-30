@@ -8,12 +8,15 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 - **Panel de administración** para gestión de usuarios e instancias TSP
 - **Subida y validación** de soluciones TSP en tiempo real
 - **Ranking dinámico** con ordenación por valor objetivo y fecha
+- **Visualización interactiva** de instancias TSP con gráficos D3.js
+- **Descarga de instancias** en formato TSPLIB
 - **Exportación CSV** de todas las soluciones
 - **Diseño responsive** con colores institucionales de la URJC
 
 ## Tecnologías Utilizadas
 
 - **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
+- **Visualización**: D3.js para gráficos interactivos
 - **Backend**: Node.js, Express.js
 - **Base de Datos**: SQLite
 - **Autenticación**: bcrypt + express-session
@@ -53,7 +56,7 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 ## Credenciales por Defecto
 
 - **Usuario administrador**:
-  - Email: `sergio.cavero@urjc.es`
+  - Email: `admin@urjc.es`
   - Contraseña: `admin`
   - **Importante**: Debes cambiar la contraseña en el primer acceso
 
@@ -71,12 +74,14 @@ topabii/
 │   ├── admin.html         # Panel de administración
 │   ├── user.html          # Panel de usuario
 │   ├── ranking.html       # Página de ranking público
+│   ├── visualize.html     # Página de visualización TSP
 │   ├── styles.css         # Estilos CSS con tema URJC
 │   ├── app.js             # Funciones JavaScript comunes
 │   ├── login.js           # Lógica de inicio de sesión
 │   ├── admin.js           # Funcionalidad del panel admin
 │   ├── user.js            # Funcionalidad del panel usuario
-│   └── ranking.js         # Lógica del ranking público
+│   ├── ranking.js         # Lógica del ranking público
+│   └── visualize.js       # Visualización interactiva con D3.js
 └── README.md              # Esta documentación
 ```
 
@@ -90,9 +95,9 @@ topabii/
    - Obligatorio cambio de contraseña en primer acceso
 
 2. **Subir Instancia TSP**
-   - Definir nombre y número de nodos
-   - Introducir matriz de distancias en formato JSON
-   - Validación automática de formato y simetría
+   - Subir instancias en formato TSPLIB estándar
+   - Validación automática de formato y coordenadas
+   - Soporte para EUC_2D (coordenadas euclidianas 2D)
 
 3. **Control del Ranking**
    - Congelar/descongelar visualización del ranking
@@ -125,6 +130,15 @@ topabii/
 - **Podio visual**: Destacado especial para top 3 posiciones
 - **Actualización automática** cada 30 segundos
 - **Estadísticas generales**: Participantes, mejor solución, total envíos
+- **Botones interactivos**: Descargar instancia y visualizar TSP
+
+### Visualización TSP
+
+- **Gráfico interactivo** con D3.js
+- **Zoom y pan**: Navegación fluida por la instancia
+- **Tooltips informativos**: Detalles de cada ciudad al hacer hover
+- **Controles de visualización**: Mostrar/ocultar etiquetas, ajustar tamaño de puntos
+- **Responsive**: Adaptado a diferentes tamaños de pantalla
 
 ## API Endpoints
 
@@ -139,10 +153,16 @@ topabii/
 - `POST /api/admin/upload-tsp` - Subir instancia TSP
 - `POST /api/admin/toggle-ranking` - Congelar/descongelar ranking
 - `GET /api/admin/export-csv` - Exportar datos CSV
+- `GET /api/admin/current-tsp` - Obtener instancia TSP actual (admin)
 
 ### Usuario
 - `POST /api/submit-solution` - Enviar solución TSP
 - `GET /api/ranking` - Obtener ranking actual
+
+### Público
+- `GET /api/current-instance` - Verificar si existe instancia
+- `GET /api/current-instance-coords` - Obtener coordenadas para visualización
+- `GET /api/download-instance` - Descargar instancia en formato TSPLIB
 
 ## Validaciones Implementadas
 
@@ -152,12 +172,12 @@ topabii/
 - Formato numérico válido
 - Cálculo correcto del valor objetivo
 
-### Matriz de Distancias
-- Formato JSON válido
-- Tamaño correcto (N×N)
-- Simetría
-- Diagonal de ceros
-- Valores no negativos
+### Instancias TSPLIB
+- Formato TSPLIB estándar válido
+- Coordenadas en formato EUC_2D
+- Dimensión coherente con número de coordenadas
+- Cálculo automático de matriz de distancias
+- Validación de campos obligatorios (NAME, DIMENSION, etc.)
 
 ## Seguridad
 
@@ -194,9 +214,9 @@ El diseño sigue la identidad visual de la Universidad Rey Juan Carlos:
 ## Ejemplo de Uso
 
 1. **Inicio como Admin**:
-   - Acceder con `admin` / `admin`
+   - Acceder con `admin@urjc.es` / `admin`
    - Crear usuarios: `user1@urjc.es; user2@urjc.es`
-   - Subir instancia TSP de ejemplo (4 ciudades)
+   - Subir instancia TSP en formato TSPLIB
 
 2. **Como Usuario**:
    - Login con email asignado
@@ -207,6 +227,12 @@ El diseño sigue la identidad visual de la Universidad Rey Juan Carlos:
 3. **Ranking Público**:
    - Visible en `/ranking` sin autenticación
    - Se actualiza automáticamente
+   - Botones para descargar y visualizar instancia
+
+4. **Visualización**:
+   - Acceder desde botones en páginas principal y ranking
+   - Vista interactiva en `/visualize`
+   - Controles de zoom, etiquetas y tamaño de puntos
 
 ## Soporte y Mantenimiento
 

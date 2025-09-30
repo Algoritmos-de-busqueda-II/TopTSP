@@ -82,43 +82,28 @@
             </div>
         </div>
 
-        <div class="grid grid-3">
-            <!-- Admin Solution Submission -->
-            <div class="card">
-                <h2>Subir Solución como Admin</h2>
-                <p>También puedes participar enviando soluciones</p>
-                
-                <form id="admin-solution-form">
-                    <div class="form-group">
-                        <label for="admin-solution">Solución:</label>
-                        <input type="text" id="admin-solution" name="solution" class="form-control" 
-                               placeholder="1, 2, 3, 4, 5" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block">Enviar Solución</button>
-                </form>
-            </div>
-            
+        <div class="grid grid-2">
             <!-- Ranking Control Card -->
             <div class="card">
                 <h2>Control de Ranking</h2>
                 <p>Gestiona la visualización y los datos del ranking</p>
-                
+
                 <div class="form-group">
                     <div id="ranking-status" class="mb-2">
                         <span class="status-indicator status-online"></span>
                         <span>Ranking visible</span>
                     </div>
-                    
+
                     <div class="grid grid-2">
                         <button id="toggle-ranking-btn" class="btn btn-secondary" onclick="toggleRanking()">
                             Congelar Ranking
                         </button>
-                        
+
                         <button id="reset-ranking-btn" class="btn btn-danger" onclick="resetRanking()">
                             🗑️ Reiniciar Ranking
                         </button>
                     </div>
-                    
+
                     <small class="mt-2">
                         <strong>Reiniciar:</strong> Elimina todas las soluciones y resetea el ranking completamente.
                     </small>
@@ -129,11 +114,11 @@
             <div class="card">
                 <h2>Exportar Datos</h2>
                 <p>Descarga un archivo CSV con todas las soluciones subidas</p>
-                
+
                 <button class="btn btn-success" onclick="exportCSV()">
                     📁 Descargar CSV
                 </button>
-                
+
                 <div class="mt-2">
                     <small>El archivo incluye: usuario, solución, valor objetivo, fecha/hora, validez</small>
                 </div>

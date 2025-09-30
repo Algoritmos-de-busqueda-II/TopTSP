@@ -195,6 +195,7 @@ function updateCountdown() {
             const competitionTitleElement = document.getElementById('competition-title');
             const noCompetitionElement = document.getElementById('no-competition');
             const downloadBtn = document.getElementById('download-instance-btn');
+            const competitionButtons = document.getElementById('competition-buttons');
 
             if (instanceData.hasInstance) {
                 // There is an instance available
@@ -210,6 +211,9 @@ function updateCountdown() {
                 if (downloadBtn) {
                     downloadBtn.style.display = '';
                 }
+                if (competitionButtons) {
+                    competitionButtons.style.display = '';
+                }
             } else {
                 // No instance available
                 if (competitionTitleElement) {
@@ -220,6 +224,9 @@ function updateCountdown() {
                 }
                 if (downloadBtn) {
                     downloadBtn.style.display = 'none';
+                }
+                if (competitionButtons) {
+                    competitionButtons.style.display = 'none';
                 }
             }
             
@@ -258,6 +265,14 @@ function updateCountdown() {
             }
         })
         .catch(error => console.error('Error loading system settings:', error));
+}
+
+function downloadInstance() {
+    window.location.href = '/api/download-instance';
+}
+
+function visualizeInstance() {
+    window.open('/visualize', '_blank');
 }
 
 // Initialize page-specific functionality

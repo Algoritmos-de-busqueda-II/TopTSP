@@ -599,6 +599,40 @@ app.get('/api/current-instance', (req, res) => {
     });
 });
 
+// Get current TSP instance with coordinates for visualization
+app.get('/api/current-instance-coords', (req, res) => {
+    const db = getDatabase();
+
+    db.get('SELECT value FROM system_settings WHERE key = ?', ['current_tsp_instance'], (err, setting) => {
+        if (err || !setting) {
+            db.close();
+            return res.json({ hasInstance: false });
+        }
+
+        const tspInstanceId = parseInt(setting.value);
+
+        db.get('SELECT * FROM tsp_instances WHERE id = ?', [tspInstanceId], (err, instance) => {
+            db.close();
+            if (err || !instance) {
+                return res.json({ hasInstance: false });
+            }
+
+            res.json({
+                hasInstance: true,
+                instance: {
+                    id: instance.id,
+                    name: instance.name,
+                    dimension: instance.dimension,
+                    type: instance.type,
+                    comment: instance.comment,
+                    coordinates: instance.coordinates,
+                    created_at: instance.created_at
+                }
+            });
+        });
+    });
+});
+
 // Get system settings
 app.get('/api/system-settings', (req, res) => {
     const db = getDatabase();
@@ -786,6 +820,10 @@ app.get('/user', requireAuthHTML, (req, res) => {
 
 app.get('/ranking', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'ranking.html'));
+});
+
+app.get('/visualize', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'visualize.html'));
 });
 
 // Helper functions
