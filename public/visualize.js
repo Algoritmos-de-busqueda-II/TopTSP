@@ -2,6 +2,7 @@ let tspData = null;
 let svg = null;
 let g = null;
 let zoom = null;
+let userRoute = null; // Store the user's solution route
 
 document.addEventListener('DOMContentLoaded', async function() {
     svg = d3.select("#tsp-canvas");
@@ -18,7 +19,15 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     svg.call(zoom);
 
-    await loadAndVisualizeInstance();
+    // Check if we have a userId parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId');
+
+    if (userId) {
+        await loadAndVisualizeUserSolution(userId);
+    } else {
+        await loadAndVisualizeInstance();
+    }
 });
 
 async function loadAndVisualizeInstance() {
@@ -86,6 +95,78 @@ async function loadAndVisualizeInstance() {
     }
 }
 
+async function loadAndVisualizeUserSolution(userId) {
+    const loadingMessage = document.getElementById('loading-message');
+    const noInstanceMessage = document.getElementById('no-instance-message');
+    const visualizationContainer = document.getElementById('visualization-container');
+
+    try {
+        // First, load the instance coordinates
+        const instanceResponse = await fetch('/api/current-instance');
+        const instanceData = await instanceResponse.json();
+
+        if (!instanceData.hasInstance) {
+            loadingMessage.classList.add('hidden');
+            noInstanceMessage.classList.remove('hidden');
+            return;
+        }
+
+        const detailsResponse = await fetch('/api/current-instance-coords');
+        if (!detailsResponse.ok) {
+            throw new Error('No se pudo cargar los detalles de la instancia');
+        }
+
+        const detailsData = await detailsResponse.json();
+        if (!detailsData.hasInstance) {
+            loadingMessage.classList.add('hidden');
+            noInstanceMessage.classList.remove('hidden');
+            return;
+        }
+
+        tspData = detailsData.instance;
+
+        // Now load the user's solution
+        const solutionResponse = await fetch(`/api/user-solution/${userId}`);
+        if (!solutionResponse.ok) {
+            throw new Error('No se pudo cargar la solución del usuario');
+        }
+
+        const solutionData = await solutionResponse.json();
+        userRoute = solutionData.route;
+
+        // Update display info
+        const displayEmail = solutionData.email.split('@')[0];
+        document.getElementById('instance-name-display').textContent = tspData.name || 'Sin nombre';
+        document.getElementById('dimension-display').textContent = tspData.dimension || '-';
+        document.getElementById('type-display').textContent = solutionData.objectiveValue.toFixed(2);
+        document.getElementById('instance-title').textContent = `Solución de ${displayEmail}`;
+
+        // Parse coordinates
+        let coordinates = [];
+        try {
+            coordinates = JSON.parse(tspData.coordinates || '[]');
+        } catch (e) {
+            console.error('Error parsing coordinates:', e);
+            throw new Error('Error al procesar las coordenadas de la instancia');
+        }
+
+        if (coordinates.length === 0) {
+            throw new Error('No se encontraron coordenadas para visualizar');
+        }
+
+        // Show visualization
+        loadingMessage.classList.add('hidden');
+        visualizationContainer.classList.remove('hidden');
+
+        // Render the TSP instance with the user's route
+        renderTSPInstance(coordinates);
+
+    } catch (error) {
+        console.error('Error loading user solution:', error);
+        loadingMessage.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    }
+}
+
 function renderTSPInstance(coordinates) {
     // Clear existing content
     g.selectAll("*").remove();
@@ -111,6 +192,32 @@ function renderTSPInstance(coordinates) {
     const yScale = d3.scaleLinear()
         .domain([minY, maxY])
         .range([height + padding, padding]); // Flip Y axis
+
+    // If we have a user route, draw the path lines first (so they appear behind the cities)
+    if (userRoute && userRoute.length > 0) {
+        // Create a line generator
+        const lineGenerator = d3.line()
+            .x(d => xScale(d.x))
+            .y(d => yScale(d.y));
+
+        // Build the path data according to the route
+        const pathData = userRoute.map(cityId => {
+            return coordinates.find(coord => coord.id === cityId);
+        });
+
+        // Add the first city again to close the loop
+        pathData.push(pathData[0]);
+
+        // Draw the path
+        g.append("path")
+            .datum(pathData)
+            .attr("class", "solution-path")
+            .attr("fill", "none")
+            .attr("stroke", "#4CAF50")
+            .attr("stroke-width", 2)
+            .attr("stroke-opacity", 0.7)
+            .attr("d", lineGenerator);
+    }
 
     // Draw cities as circles
     const cities = g.selectAll(".city")

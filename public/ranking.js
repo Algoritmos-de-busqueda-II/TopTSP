@@ -132,10 +132,10 @@ function updateFrozenMessage(frozenAt) {
 function populateRankingTable(ranking) {
     const tbody = document.getElementById('ranking-tbody');
     tbody.innerHTML = '';
-    
+
     ranking.forEach((entry, index) => {
         const row = document.createElement('tr');
-        
+
         // Add special styling for top 3
         if (index === 0) {
             row.classList.add('rank-1');
@@ -144,7 +144,7 @@ function populateRankingTable(ranking) {
         } else if (index === 2) {
             row.classList.add('rank-3');
         }
-        
+
         // Remove the @ part from email (including @)
         const displayEmail = entry.email.split('@')[0];
 
@@ -158,10 +158,19 @@ function populateRankingTable(ranking) {
             <td>${sanitizeHtml(entry.best_method || '-')}</td>
             <td>${formatDate(entry.last_improvement)}</td>
             <td>${entry.total_submissions || 0}</td>
+            <td>
+                <button onclick="visualizeUserSolution(${entry.user_id})" class="btn btn-secondary btn-sm" title="Visualizar solución">
+                    👁️
+                </button>
+            </td>
         `;
-        
+
         tbody.appendChild(row);
     });
+}
+
+function visualizeUserSolution(userId) {
+    window.location.href = `/visualize?userId=${userId}`;
 }
 
 function updateStatistics(data) {
@@ -200,5 +209,5 @@ function downloadInstance() {
 }
 
 function visualizeInstance() {
-    window.open('/visualize', '_blank');
+    window.location.href = '/visualize';
 }

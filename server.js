@@ -440,6 +440,7 @@ app.get('/api/ranking', (req, res) => {
         // Get current ranking
         db.all(`
             SELECT
+                ubs.user_id,
                 u.email,
                 ubs.best_objective_value,
                 ubs.best_method,
@@ -824,6 +825,46 @@ app.get('/ranking', (req, res) => {
 
 app.get('/visualize', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'visualize.html'));
+});
+
+// API endpoint to get user's best solution with route
+app.get('/api/user-solution/:userId', (req, res) => {
+    const userId = parseInt(req.params.userId);
+
+    const db = getDatabase();
+
+    // Get user's best solution including the route
+    db.get(`
+        SELECT s.solution, ubs.best_objective_value, u.email
+        FROM user_best_solutions ubs
+        JOIN solutions s ON ubs.best_solution_id = s.id
+        JOIN users u ON ubs.user_id = u.id
+        WHERE ubs.user_id = ?
+    `, [userId], (err, result) => {
+        if (err) {
+            console.error('Error fetching user solution:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (!result) {
+            return res.status(404).json({ error: 'Solution not found' });
+        }
+
+        // Parse the solution string to array of integers
+        let route = [];
+        try {
+            route = result.solution.split(',').map(n => parseInt(n.trim()));
+        } catch (e) {
+            console.error('Error parsing solution:', e);
+            return res.status(500).json({ error: 'Invalid solution format' });
+        }
+
+        res.json({
+            route: route,
+            objectiveValue: result.best_objective_value,
+            email: result.email
+        });
+    });
 });
 
 // Helper functions
