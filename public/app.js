@@ -272,7 +272,19 @@ function downloadInstance() {
 }
 
 function visualizeInstance() {
-    window.open('/visualize', '_blank');
+    window.location.href = '/visualize';
+}
+
+function toggleMobileMenu() {
+    const nav = document.getElementById('mobile-nav');
+    const overlay = document.querySelector('.mobile-menu-overlay');
+
+    if (nav) {
+        nav.classList.toggle('active');
+    }
+    if (overlay) {
+        overlay.classList.toggle('active');
+    }
 }
 
 // Initialize page-specific functionality
@@ -284,10 +296,10 @@ document.addEventListener('DOMContentLoaded', function() {
             card.classList.add('fade-in');
         }, index * 100);
     });
-    
+
     // Update navigation based on auth status
     updateNavigation();
-    
+
     // Update countdown and refresh every minute
     updateCountdown();
     setInterval(updateCountdown, 60000);

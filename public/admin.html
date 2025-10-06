@@ -8,6 +8,7 @@
         <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
+    <div class="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
     <header class="header">
         <div class="header-content">
             <div class="logo">
@@ -16,7 +17,9 @@
                         <div class="logo-subtitle">Plataforma para Competiciones en el TSP</div>
                 </div>
             </div>
-            <nav class="nav">
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+            <nav class="nav" id="mobile-nav">
+                <button class="mobile-menu-close" onclick="toggleMobileMenu()">✕</button>
                 <a href="/">Inicio</a>
                 <a href="/ranking">Ranking</a>
                 <a href="/user">Subir Solución</a>
@@ -112,15 +115,33 @@
 
             <!-- Export Data Card -->
             <div class="card">
-                <h2>Exportar Datos</h2>
-                <p>Descarga un archivo CSV con todas las soluciones subidas</p>
+                <h2>Exportar y Restaurar Datos</h2>
+                <p>Descarga archivos de exportación, crea backups y restaura la base de datos</p>
 
-                <button class="btn btn-success" onclick="exportCSV()">
-                    📁 Descargar CSV
-                </button>
+                <div class="grid grid-2">
+                    <button class="btn btn-success" onclick="exportCSV()">
+                        📁 Descargar CSV
+                    </button>
+
+                    <button class="btn btn-primary" onclick="backupDatabase()">
+                        💾 Backup Base de Datos
+                    </button>
+                </div>
+
+                <div class="mt-3">
+                    <h3>Restaurar Base de Datos</h3>
+                    <div class="form-group">
+                        <input type="file" id="restore-file" class="form-control" accept=".db">
+                        <button class="btn btn-warning btn-block mt-2" onclick="restoreDatabase()">
+                            ↩️ Restaurar Backup
+                        </button>
+                    </div>
+                </div>
 
                 <div class="mt-2">
-                    <small>El archivo incluye: usuario, solución, valor objetivo, fecha/hora, validez</small>
+                    <small><strong>CSV:</strong> Todas las soluciones subidas</small><br>
+                    <small><strong>Backup:</strong> Copia completa de la base de datos</small><br>
+                    <small><strong>Restaurar:</strong> Sube un archivo .db para restaurar (se crea backup de seguridad automáticamente)</small>
                 </div>
             </div>
         </div>

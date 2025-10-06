@@ -8,6 +8,7 @@
         <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
+    <div class="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
     <header class="header">
         <div class="header-content">
             <div class="logo">
@@ -16,7 +17,9 @@
                     <div class="logo-subtitle">Plataforma para Competiciones en el TSP</div>
                 </div>
             </div>
-            <nav class="nav">
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+            <nav class="nav" id="mobile-nav">
+                <button class="mobile-menu-close" onclick="toggleMobileMenu()">✕</button>
                 <a href="/">Inicio</a>
                 <a href="/ranking">Ranking</a>
                 <a href="/login" class="active">Acceder</a>
