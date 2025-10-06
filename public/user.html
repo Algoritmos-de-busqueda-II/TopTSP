@@ -8,6 +8,7 @@
         <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
+    <div class="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
     <header class="header">
         <div class="header-content">
             <div class="logo">
@@ -16,7 +17,9 @@
                         <div class="logo-subtitle">Plataforma para Competiciones en el TSP</div>
                 </div>
             </div>
-            <nav class="nav">
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+            <nav class="nav" id="mobile-nav">
+                <button class="mobile-menu-close" onclick="toggleMobileMenu()">✕</button>
                 <a href="/">Inicio</a>
                 <a href="/ranking">Ranking</a>
                 <a href="/user" class="active">Subir Solución</a>
@@ -49,16 +52,16 @@
                 <h3>Estadísticas Personales</h3>
                 <div class="grid grid-3">
                     <div class="text-center">
-                        <h4 id="best-value">-</h4>
-                        <p>Mejor Valor</p>
+                        <p><strong>Mejor Valor</strong></p>
+                        <p id="best-value">-</p>
                     </div>
                     <div class="text-center">
-                        <h4 id="total-submissions">-</h4>
-                        <p>Envíos Totales</p>
+                        <p><strong>Envíos Totales</strong></p>
+                        <p id="total-submissions">-</p>
                     </div>
                     <div class="text-center">
-                        <h4 id="last-improvement">-</h4>
-                        <p>Última Mejora</p>
+                        <p><strong>Última Mejora</strong></p>
+                        <p id="last-improvement">-</p>
                     </div>
                 </div>
             </div>
@@ -104,7 +107,7 @@
                 <p>Cargando historial...</p>
             </div>
             
-            <div id="solution-history-container" class="hidden">
+            <div id="solution-history-container" class="hidden" style="overflow-x: auto;">
                 <table class="table">
                     <thead>
                         <tr>
