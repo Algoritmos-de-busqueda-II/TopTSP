@@ -170,6 +170,7 @@ function populateRankingTable(ranking) {
 }
 
 function visualizeUserSolution(userId) {
+    // Open in same page instead of new tab
     window.location.href = `/visualize?userId=${userId}`;
 }
 
