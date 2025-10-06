@@ -63,10 +63,27 @@ async function loadAndVisualizeInstance() {
 
         tspData = detailsData.instance;
 
+        // Fetch best objective value from ranking
+        let bestObjectiveValue = '-';
+        try {
+            const rankingResponse = await fetch('/api/ranking');
+            if (rankingResponse.ok) {
+                const rankingData = await rankingResponse.json();
+                if (rankingData.stats && rankingData.stats.bestSolution !== null) {
+                    bestObjectiveValue = rankingData.stats.bestSolution.toFixed(2);
+                } else if (rankingData.ranking && rankingData.ranking.length > 0) {
+                    bestObjectiveValue = rankingData.ranking[0].best_objective_value.toFixed(2);
+                }
+            }
+        } catch (e) {
+            console.error('Error fetching best objective value:', e);
+        }
+
         // Update display info
         document.getElementById('instance-name-display').textContent = tspData.name || 'Sin nombre';
         document.getElementById('dimension-display').textContent = tspData.dimension || '-';
-        document.getElementById('type-display').textContent = tspData.type || 'TSP';
+        document.getElementById('type-display').textContent = bestObjectiveValue;
+        document.getElementById('type-label').textContent = 'Mejor F.O.';
         document.getElementById('instance-title').textContent = `Visualización: ${tspData.name || 'Instancia TSP'}`;
 
         // Parse coordinates
@@ -136,9 +153,10 @@ async function loadAndVisualizeUserSolution(userId) {
 
         // Update display info
         const displayEmail = solutionData.email.split('@')[0];
-        document.getElementById('instance-name-display').textContent = tspData.name || 'Sin nombre';
+        document.getElementById('instance-name-display').textContent = solutionData.instanceName || tspData.name || 'Sin nombre';
         document.getElementById('dimension-display').textContent = tspData.dimension || '-';
         document.getElementById('type-display').textContent = solutionData.objectiveValue.toFixed(2);
+        document.getElementById('type-label').textContent = 'F.O.';
         document.getElementById('instance-title').textContent = `Solución de ${displayEmail}`;
 
         // Parse coordinates
@@ -179,10 +197,16 @@ function renderTSPInstance(coordinates) {
     const minY = Math.min(...yValues);
     const maxY = Math.max(...yValues);
 
+    // Get actual SVG dimensions
+    const svgNode = document.getElementById('tsp-canvas');
+    const containerWidth = svgNode.parentElement.getBoundingClientRect().width;
+    const svgWidth = Math.min(containerWidth, 800);
+    const svgHeight = 600;
+
     // Add padding
     const padding = 50;
-    const width = 800 - 2 * padding;
-    const height = 600 - 2 * padding;
+    const width = svgWidth - 2 * padding;
+    const height = svgHeight - 2 * padding;
 
     // Create scales
     const xScale = d3.scaleLinear()
@@ -279,8 +303,10 @@ function renderTSPInstance(coordinates) {
 
     // Auto-fit the visualization
     const bounds = g.node().getBBox();
-    const fullWidth = svg.attr("width");
-    const fullHeight = svg.attr("height");
+    const svgElement = document.getElementById('tsp-canvas');
+    const containerWidthFit = svgElement.parentElement.getBoundingClientRect().width;
+    const fullWidth = Math.min(containerWidthFit, 800);
+    const fullHeight = 600;
     const midX = bounds.x + bounds.width / 2;
     const midY = bounds.y + bounds.height / 2;
     const scale = 0.8 / Math.max(bounds.width / fullWidth, bounds.height / fullHeight);
