@@ -4,6 +4,7 @@ const fs = require('fs');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const path = require('path');
+const multer = require('multer');
 const { initializeDatabase, getDatabase } = require('./database');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
@@ -41,6 +42,12 @@ app.use(session({
         sameSite: 'strict'
     }
 }));
+
+// Multer configuration for file uploads
+const upload = multer({
+    dest: path.join(__dirname, 'uploads'),
+    limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit
+});
 
 // Authentication middleware
 function requireAuth(req, res, next) {
@@ -727,7 +734,7 @@ app.post('/api/admin/delete-user', requireAdmin, (req, res) => {
 // Export CSV (admin only)
 app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
     const db = getDatabase();
-    
+
     db.all(`
         SELECT
             u.email,
@@ -744,7 +751,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
         if (err) {
             return res.status(500).json({ error: 'Database error' });
         }
-        
+
         const csvWriter = createCsvWriter({
             path: 'export.csv',
             header: [
@@ -756,7 +763,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
                 { id: 'is_valid', title: 'Valid' }
             ]
         });
-        
+
         csvWriter.writeRecords(rows)
             .then(() => {
                 res.download('export.csv', 'topabii-export.csv', (err) => {
@@ -770,6 +777,60 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
                 res.status(500).json({ error: 'Error creating CSV' });
             });
     });
+});
+
+// Backup database (admin only)
+app.post('/api/admin/backup-database', requireAdmin, (req, res) => {
+    try {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const backupFilename = `topabii_backup_${timestamp}.db`;
+        const backupPath = path.join(__dirname, backupFilename);
+
+        // Copy the database file
+        fs.copyFileSync(path.join(__dirname, 'topabii.db'), backupPath);
+
+        res.json({
+            success: true,
+            filename: backupFilename,
+            path: backupPath,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Backup error:', error);
+        res.status(500).json({ error: 'Error al crear backup de la base de datos' });
+    }
+});
+
+// Restore database (admin only)
+app.post('/api/admin/restore-database', requireAdmin, upload.single('backup'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se ha proporcionado archivo de backup' });
+        }
+
+        const backupPath = req.file.path;
+        const dbPath = path.join(__dirname, 'topabii.db');
+
+        // Create a safety backup before restoring
+        const safetyBackupFilename = `topabii_before_restore_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.db`;
+        const safetyBackupPath = path.join(__dirname, safetyBackupFilename);
+        fs.copyFileSync(dbPath, safetyBackupPath);
+
+        // Restore the backup
+        fs.copyFileSync(backupPath, dbPath);
+
+        // Clean up uploaded file
+        fs.unlinkSync(backupPath);
+
+        res.json({
+            success: true,
+            message: 'Base de datos restaurada correctamente',
+            safetyBackup: safetyBackupFilename
+        });
+    } catch (error) {
+        console.error('Restore error:', error);
+        res.status(500).json({ error: 'Error al restaurar la base de datos' });
+    }
 });
 
 // Get current user info
@@ -859,10 +920,18 @@ app.get('/api/user-solution/:userId', (req, res) => {
             return res.status(500).json({ error: 'Invalid solution format' });
         }
 
-        res.json({
-            route: route,
-            objectiveValue: result.best_objective_value,
-            email: result.email
+        // Get the instance name from system settings
+        db.get('SELECT value FROM system_settings WHERE key = ?', ['instance_name'], (err2, instanceNameSetting) => {
+            db.close();
+
+            const instanceName = instanceNameSetting ? instanceNameSetting.value : null;
+
+            res.json({
+                route: route,
+                objectiveValue: result.best_objective_value,
+                email: result.email,
+                instanceName: instanceName
+            });
         });
     });
 });

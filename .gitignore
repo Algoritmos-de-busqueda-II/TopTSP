@@ -14,6 +14,9 @@ yarn-error.log*
 # Database
 *.db
 
+# Uploads
+uploads/
+
 # Environment variables
 .env
 

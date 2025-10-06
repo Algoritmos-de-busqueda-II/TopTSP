@@ -199,12 +199,12 @@ async function toggleRanking() {
 
 async function exportCSV() {
     clearAlerts('alert-container');
-    
+
     try {
         showAlert('alert-container', 'Preparando exportación...', 'info');
-        
+
         const response = await fetch('/api/admin/export-csv');
-        
+
         if (response.ok) {
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
@@ -215,7 +215,7 @@ async function exportCSV() {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
-            
+
             showAlert('alert-container', 'Archivo CSV descargado exitosamente.', 'success');
         } else {
             const data = await response.json();
@@ -223,6 +223,102 @@ async function exportCSV() {
         }
     } catch (error) {
         console.error('Export error:', error);
+        showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
+    }
+}
+
+async function backupDatabase() {
+    clearAlerts('alert-container');
+
+    if (!confirm('¿Estás seguro de que deseas crear un backup de la base de datos?\n\nEsto creará una copia completa de la base de datos con el timestamp actual.')) {
+        return;
+    }
+
+    try {
+        showAlert('alert-container', 'Creando backup de la base de datos...', 'info');
+
+        const response = await fetch('/api/admin/backup-database', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showAlert('alert-container', `Backup creado exitosamente: <strong>${data.filename}</strong><br>Ubicación: ${data.path}`, 'success');
+        } else {
+            showAlert('alert-container', data.error || 'Error al crear backup', 'danger');
+        }
+    } catch (error) {
+        console.error('Backup error:', error);
+        showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
+    }
+}
+
+async function restoreDatabase() {
+    clearAlerts('alert-container');
+
+    const fileInput = document.getElementById('restore-file');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        showAlert('alert-container', 'Por favor, selecciona un archivo de backup (.db) para restaurar.', 'danger');
+        return;
+    }
+
+    if (!file.name.endsWith('.db')) {
+        showAlert('alert-container', 'El archivo debe ser una base de datos (.db).', 'danger');
+        return;
+    }
+
+    const confirmed = confirm(
+        '⚠️ ADVERTENCIA CRÍTICA: ¿Estás seguro de que quieres restaurar la base de datos?\n\n' +
+        'Esta acción:\n' +
+        '• Reemplazará COMPLETAMENTE la base de datos actual\n' +
+        '• Se creará un backup de seguridad automáticamente\n' +
+        '• Se perderán todos los datos actuales si no has hecho backup\n\n' +
+        'Esta acción NO se puede deshacer fácilmente.\n\n' +
+        '¿Continuar con la restauración?'
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        showAlert('alert-container', 'Restaurando base de datos... Por favor espera.', 'info');
+
+        const formData = new FormData();
+        formData.append('backup', file);
+
+        const response = await fetch('/api/admin/restore-database', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showAlert('alert-container',
+                `✅ Base de datos restaurada exitosamente.<br>` +
+                `Backup de seguridad creado: <strong>${data.safetyBackup}</strong><br><br>` +
+                `<strong>IMPORTANTE:</strong> Recarga la página para ver los cambios.`,
+                'success');
+            fileInput.value = ''; // Clear the file input
+
+            // Optionally reload the page after a delay
+            setTimeout(() => {
+                if (confirm('¿Quieres recargar la página ahora para ver los cambios?')) {
+                    window.location.reload();
+                }
+            }, 2000);
+        } else {
+            showAlert('alert-container', data.error || 'Error al restaurar la base de datos', 'danger');
+        }
+    } catch (error) {
+        console.error('Restore error:', error);
         showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
     }
 }
