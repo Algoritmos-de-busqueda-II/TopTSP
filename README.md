@@ -4,6 +4,31 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 
 <img width="1159" height="1064" alt="image" src="https://github.com/user-attachments/assets/da24616b-989f-4ec5-8f82-76b82fbe870a" />
 
+## Tabla de Contenidos
+
+1.  [Características Principales](#características-principales)
+2.  [Tecnologías Utilizadas](#tecnologías-utilizadas)
+3.  [Instalación y Configuración](#instalación-y-configuración)
+    * [Requisitos Previos](#requisitos-previos)
+    * [Pasos de Instalación](#pasos-de-instalación)
+    * [Acceder a la aplicación](#acceder-a-la-aplicación)
+4.  [Credenciales por Defecto](#credenciales-por-defecto)
+5.  [Estructura del Proyecto](#estructura-del-proyecto)
+6.  [Funcionalidades Detalladas](#funcionalidades-detalladas)
+    * [Para Administradores](#para-administradores)
+    * [Para Usuarios](#para-usuarios)
+    * [Ranking Público](#ranking-público)
+    * [Visualización TSP](#visualización-tsp)
+7.  [API Endpoints](#api-endpoints)
+8.  [Validaciones Implementadas](#validaciones-implementadas)
+    * [Soluciones TSP](#soluciones-tsp)
+    * [Instancias TSPLIB](#instancias-tsplib)
+9.  [Seguridad](#seguridad)
+10. [Estilo Visual URJC](#estilo-visual-urjc)
+11. [Base de Datos](#base-de-datos)
+12. [Ejemplo de Uso](#ejemplo-de-uso)
+13. [Soporte y Mantenimiento](#soporte-y-mantenimiento)
+14. [Licencia](#licencia)
 
 ## Características Principales
 
@@ -265,5 +290,5 @@ El diseño sigue la identidad visual de la Universidad Rey Juan Carlos:
 - **Reinicio**: `npm start` o reinicio del proceso Node.js
 
 ## Licencia
-
-Desarrollado para la Universidad Rey Juan Carlos - 2024
+MIT License
+Desarrollado para la Universidad Rey Juan Carlos - 2025
