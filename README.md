@@ -2,6 +2,9 @@
 
 TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos que permite la gestión de competiciones del Problema del Viajante de Comercio (TSP).
 
+<img width="1159" height="1064" alt="image" src="https://github.com/user-attachments/assets/da24616b-989f-4ec5-8f82-76b82fbe870a" />
+
+
 ## Características Principales
 
 - **Sistema de usuarios** con registro y autenticación
@@ -93,19 +96,28 @@ topabii/
    - Introducir emails separados por `;`
    - Los usuarios se crean con su email como contraseña inicial
    - Obligatorio cambio de contraseña en primer acceso
-
+  
 2. **Subir Instancia TSP**
    - Subir instancias en formato TSPLIB estándar
    - Validación automática de formato y coordenadas
    - Soporte para EUC_2D (coordenadas euclidianas 2D)
+  
+<img width="1159" height="870" alt="image" src="https://github.com/user-attachments/assets/b2bde833-6f22-4429-a06f-488ce3598bb3" />
+
 
 3. **Control del Ranking**
    - Congelar/descongelar visualización del ranking
    - Las soluciones siguen procesándose en segundo plano
 
+<img width="573" height="630" alt="image" src="https://github.com/user-attachments/assets/eb8f1672-bc24-4345-8abd-5ed96018a18f" />
+
+
 4. **Exportar Datos**
    - Descargar CSV con todas las soluciones
    - Incluye: usuario, solución, valor objetivo, fecha/hora, validez
+  
+<img width="573" height="630" alt="image" src="https://github.com/user-attachments/assets/375603f2-2cc4-4532-a719-2d0d04db7ff6" />
+
 
 ### Para Usuarios
 
@@ -132,6 +144,9 @@ topabii/
 - **Estadísticas generales**: Participantes, mejor solución, total envíos
 - **Botones interactivos**: Descargar instancia y visualizar TSP
 
+<img width="2320" height="1472" alt="image" src="https://github.com/user-attachments/assets/c32b2094-19dd-43a1-8db5-1b452e9f1e65" />
+
+
 ### Visualización TSP
 
 - **Gráfico interactivo** con D3.js
@@ -140,7 +155,12 @@ topabii/
 - **Controles de visualización**: Mostrar/ocultar etiquetas, ajustar tamaño de puntos
 - **Responsive**: Adaptado a diferentes tamaños de pantalla
 
-## API Endpoints
+<img width="1160" height="937" alt="image" src="https://github.com/user-attachments/assets/2385c9cb-8fa8-4fea-a080-43153f3e6e81" />
+
+<img width="1160" height="937" alt="image" src="https://github.com/user-attachments/assets/3f1b56f3-276b-4b4e-b478-98d27a9d53cb" />
+
+  
+- ## API Endpoints
 
 ### Autenticación
 - `POST /api/login` - Iniciar sesión
@@ -233,6 +253,9 @@ El diseño sigue la identidad visual de la Universidad Rey Juan Carlos:
    - Acceder desde botones en páginas principal y ranking
    - Vista interactiva en `/visualize`
    - Controles de zoom, etiquetas y tamaño de puntos
+  
+<img width="1160" height="1067" alt="image" src="https://github.com/user-attachments/assets/14b11eb3-1ffd-44e5-97c4-fcc863b26073" />
+
 
 ## Soporte y Mantenimiento
 
