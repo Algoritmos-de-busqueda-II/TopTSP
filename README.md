@@ -181,8 +181,7 @@ topabii/
 - **Responsive**: Adaptado a diferentes tamaños de pantalla
 
 <img width="1160" height="937" alt="image" src="https://github.com/user-attachments/assets/2385c9cb-8fa8-4fea-a080-43153f3e6e81" />
-
-<img width="1160" height="937" alt="image" src="https://github.com/user-attachments/assets/3f1b56f3-276b-4b4e-b478-98d27a9d53cb" />
+<img width="2320" height="2134" alt="image" src="https://github.com/user-attachments/assets/1a4fad1c-6ff1-4165-a166-f7ee5c5d211f" />
 
   
 - ## API Endpoints
