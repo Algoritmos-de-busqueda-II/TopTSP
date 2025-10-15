@@ -456,18 +456,27 @@ app.get('/api/ranking', (req, res) => {
             FROM user_best_solutions ubs
             JOIN users u ON ubs.user_id = u.id
             WHERE ubs.best_objective_value IS NOT NULL
-            ORDER BY ubs.best_objective_value ASC, ubs.last_improvement ASC
+            -- Ensure numeric ordering for objective (rounded to 2 decimals to avoid floating precision issues)
+            -- and chronological ordering for timestamps (older first)
+            ORDER BY ROUND(CAST(ubs.best_objective_value AS REAL), 2) ASC, datetime(ubs.last_improvement) ASC
         `, (err, rows) => {
             db.close();
             if (err) {
                 return res.status(500).json({ error: 'Database error' });
             }
-            
+            // Round objective values to 2 decimals for output
+            rows = rows.map(r => ({
+                ...r,
+                best_objective_value: r.best_objective_value !== null && r.best_objective_value !== undefined
+                    ? Number(Number(r.best_objective_value).toFixed(2))
+                    : r.best_objective_value
+            }));
+
             // Calculate current stats
             const totalParticipants = rows.length;
             const bestSolution = rows.length > 0 ? rows[0].best_objective_value : null;
             const totalSolutions = rows.reduce((sum, entry) => sum + (entry.total_submissions || 0), 0);
-            
+
             res.json({ 
                 frozen: false, 
                 ranking: rows,
@@ -1019,13 +1028,21 @@ function saveRankingSnapshot(callback) {
         FROM user_best_solutions ubs
         JOIN users u ON ubs.user_id = u.id
         WHERE ubs.best_objective_value IS NOT NULL
-        ORDER BY ubs.best_objective_value ASC, ubs.last_improvement DESC
+    -- Keep same ordering as live ranking: objective asc (rounded to 2 decimals), older timestamps first
+    ORDER BY ROUND(CAST(ubs.best_objective_value AS REAL), 2) ASC, datetime(ubs.last_improvement) ASC
     `, (err, rows) => {
         if (err) {
             db.close();
             return callback(err);
         }
-        
+        // Round objective values to 2 decimals before saving snapshot
+        rows = rows.map(r => ({
+            ...r,
+            best_objective_value: r.best_objective_value !== null && r.best_objective_value !== undefined
+                ? Number(Number(r.best_objective_value).toFixed(2))
+                : r.best_objective_value
+        }));
+
         // Calculate stats
         const totalParticipants = rows.length;
         const bestSolution = rows.length > 0 ? rows[0].best_objective_value : null;
