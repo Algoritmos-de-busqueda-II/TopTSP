@@ -81,6 +81,11 @@ async function loadAndVisualizeInstance() {
 
         // Update display info
         document.getElementById('instance-name-display').textContent = tspData.name || 'Sin nombre';
+        // Restore middle label and value to show number of cities
+        const middleLabel = document.querySelectorAll('.visualization-info .grid .text-center p strong')[1];
+        if (middleLabel) {
+            middleLabel.textContent = 'Número de Ciudades';
+        }
         document.getElementById('dimension-display').textContent = tspData.dimension || '-';
         document.getElementById('type-display').textContent = bestObjectiveValue;
         document.getElementById('type-label').textContent = 'Mejor F.O.';
@@ -167,9 +172,15 @@ async function loadAndVisualizeUserSolution(userId) {
         // Update display info
         const displayEmail = solutionData.email.split('@')[0];
         document.getElementById('instance-name-display').textContent = solutionData.instanceName || tspData.name || 'Sin nombre';
-        document.getElementById('dimension-display').textContent = tspData.dimension || '-';
+        // Show method in the middle column instead of 'Número de Ciudades'
+        document.getElementById('dimension-display').textContent = solutionData.method || '';
         document.getElementById('type-display').textContent = solutionData.objectiveValue.toFixed(2);
         document.getElementById('type-label').textContent = 'F.O.';
+        // Change the center label to 'Método'
+        const middleLabel = document.querySelectorAll('.visualization-info .grid .text-center p strong')[1];
+        if (middleLabel) {
+            middleLabel.textContent = 'Método';
+        }
         document.getElementById('instance-title').textContent = `Solución de ${displayEmail}`;
 
         // Parse coordinates

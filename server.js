@@ -903,9 +903,9 @@ app.get('/api/user-solution/:userId', (req, res) => {
 
     const db = getDatabase();
 
-    // Get user's best solution including the route
+    // Get user's best solution including the route and method
     db.get(`
-        SELECT s.solution, ubs.best_objective_value, u.email
+        SELECT s.solution, s.method AS method, ubs.best_objective_value, u.email
         FROM user_best_solutions ubs
         JOIN solutions s ON ubs.best_solution_id = s.id
         JOIN users u ON ubs.user_id = u.id
@@ -937,6 +937,7 @@ app.get('/api/user-solution/:userId', (req, res) => {
 
             res.json({
                 route: route,
+                method: result.method || '',
                 objectiveValue: result.best_objective_value,
                 email: result.email,
                 instanceName: instanceName
