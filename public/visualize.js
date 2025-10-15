@@ -247,27 +247,28 @@ function renderProgressionChart(submissions, email) {
         showlegend: true
     };
 
-    // Markers trace for actual improvements (hover shows value and method); hide legend to avoid duplication
+    // Markers trace for actual improvements (hover shows value and method)
+    // Show in legend as 'Envío'
     const traceMarkers = {
         x: improvementX,
         y: improvementY,
         mode: 'markers',
-        name: 'Mejor solución',
+        name: 'Envío',
         marker: { size: 8, color: 'green' },
         hovertemplate: 'Valor: %{y:.2f}<br>Método: %{customdata}<extra></extra>',
         customdata: improvementMethods,
-        showlegend: false
+        showlegend: true
     };
 
     const data = [traceLine, traceMarkers];
 
     const layout = {
-        title: `Progresión de soluciones - ${email.split('@')[0]}`,
+        // No title as requested - keep chart minimal
         xaxis: { title: 'Fecha de envío' },
-        yaxis: { title: 'Objective Value' },
+        yaxis: { title: 'Función Objetivo' },
         template: 'plotly_white',
         hovermode: 'closest',
-        margin: { t: 50, r: 20, l: 60, b: 80 }
+        margin: { t: 20, r: 20, l: 60, b: 80 }
     };
 
     Plotly.newPlot(chartDiv, data, layout, {responsive: true, displayModeBar: false});

@@ -766,7 +766,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
             header: [
                 { id: 'email', title: 'Email' },
                 { id: 'solution', title: 'Solution' },
-                { id: 'objective_value', title: 'Objective Value' },
+                { id: 'objective_value', title: 'Función Objetivo' },
                 { id: 'method', title: 'Method' },
                 { id: 'submitted_at', title: 'Submitted At' },
                 { id: 'is_valid', title: 'Valid' }
