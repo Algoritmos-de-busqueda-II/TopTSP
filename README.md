@@ -60,7 +60,7 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 
 1. **Clonar/descargar el proyecto**
    ```bash
-   cd topabii
+   cd TopTSP
    ```
 
 2. **Instalar dependencias**
