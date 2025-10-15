@@ -945,6 +945,35 @@ app.get('/api/user-solution/:userId', (req, res) => {
     });
 });
 
+// Get user's submissions history (public) for visualization
+app.get('/api/user-submissions/:userId', (req, res) => {
+    const userId = parseInt(req.params.userId);
+    const db = getDatabase();
+
+    db.all(`
+        SELECT objective_value, method, submitted_at
+        FROM solutions
+        WHERE user_id = ?
+        ORDER BY submitted_at ASC
+        LIMIT 200
+    `, [userId], (err, rows) => {
+        db.close();
+        if (err) {
+            console.error('Error fetching user submissions:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        // Normalize rows: ensure submitted_at is ISO string
+        const submissions = rows.map(r => ({
+            objective_value: r.objective_value,
+            method: r.method,
+            submitted_at: r.submitted_at
+        }));
+
+        res.json({ submissions });
+    });
+});
+
 // Helper functions
 function validateTSPSolution(solution, nodeCount) {
     if (solution.length !== nodeCount) {

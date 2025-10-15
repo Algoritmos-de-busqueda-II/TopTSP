@@ -151,6 +151,19 @@ async function loadAndVisualizeUserSolution(userId) {
         const solutionData = await solutionResponse.json();
         userRoute = solutionData.route;
 
+        // Additionally, fetch user's submissions history to render progression chart
+        try {
+            const subsResp = await fetch(`/api/user-submissions/${userId}`);
+            if (subsResp.ok) {
+                const subsData = await subsResp.json();
+                if (subsData && Array.isArray(subsData.submissions) && subsData.submissions.length > 0) {
+                    renderProgressionChart(subsData.submissions, solutionData.email);
+                }
+            }
+        } catch (e) {
+            console.error('Error fetching user submissions:', e);
+        }
+
         // Update display info
         const displayEmail = solutionData.email.split('@')[0];
         document.getElementById('instance-name-display').textContent = solutionData.instanceName || tspData.name || 'Sin nombre';
@@ -183,6 +196,81 @@ async function loadAndVisualizeUserSolution(userId) {
         console.error('Error loading user solution:', error);
         loadingMessage.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
     }
+}
+
+function renderProgressionChart(submissions, email) {
+    // Show the progression card
+    const card = document.getElementById('progression-card');
+    const chartDiv = document.getElementById('progression-chart');
+    if (!card || !chartDiv) return;
+    card.classList.remove('hidden');
+
+    // Prepare data: ensure submitted_at parsed as Date, objective_value as number
+    const parsed = submissions.map(s => ({
+        submitted_at: new Date(s.submitted_at),
+        objective_value: Number(s.objective_value),
+        method: s.method || ''
+    }));
+
+    // Sort by date in case
+    parsed.sort((a, b) => a.submitted_at - b.submitted_at);
+
+    const x = parsed.map(p => p.submitted_at);
+    const y = parsed.map(p => p.objective_value);
+    const methods = parsed.map(p => p.method);
+
+    // Compute best-so-far series
+    const best = [];
+    let currentBest = Infinity;
+    const improvementX = [];
+    const improvementY = [];
+    const improvementMethods = [];
+
+    for (let i = 0; i < y.length; i++) {
+        if (y[i] < currentBest) {
+            currentBest = y[i];
+            improvementX.push(x[i]);
+            improvementY.push(y[i]);
+            improvementMethods.push(methods[i] || '');
+        }
+        best.push(currentBest === Infinity ? null : currentBest);
+    }
+
+    // Line trace for best-so-far (single visible line)
+    const traceLine = {
+        x,
+        y: best,
+        mode: 'lines',
+        name: 'Mejor solución',
+        line: { dash: 'dash', color: 'green' },
+        hoverinfo: 'skip',
+        showlegend: true
+    };
+
+    // Markers trace for actual improvements (hover shows value and method); hide legend to avoid duplication
+    const traceMarkers = {
+        x: improvementX,
+        y: improvementY,
+        mode: 'markers',
+        name: 'Mejor solución',
+        marker: { size: 8, color: 'green' },
+        hovertemplate: 'Valor: %{y:.2f}<br>Método: %{customdata}<extra></extra>',
+        customdata: improvementMethods,
+        showlegend: false
+    };
+
+    const data = [traceLine, traceMarkers];
+
+    const layout = {
+        title: `Progresión de soluciones - ${email.split('@')[0]}`,
+        xaxis: { title: 'Fecha de envío' },
+        yaxis: { title: 'Objective Value' },
+        template: 'plotly_white',
+        hovermode: 'closest',
+        margin: { t: 50, r: 20, l: 60, b: 80 }
+    };
+
+    Plotly.newPlot(chartDiv, data, layout, {responsive: true, displayModeBar: false});
 }
 
 function renderTSPInstance(coordinates) {
