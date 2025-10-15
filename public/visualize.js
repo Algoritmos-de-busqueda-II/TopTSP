@@ -161,9 +161,9 @@ async function loadAndVisualizeUserSolution(userId) {
             const subsResp = await fetch(`/api/user-submissions/${userId}`);
             if (subsResp.ok) {
                 const subsData = await subsResp.json();
-                if (subsData && Array.isArray(subsData.submissions) && subsData.submissions.length > 0) {
-                    renderProgressionChart(subsData.submissions, solutionData.email);
-                }
+                        if (subsData && Array.isArray(subsData.submissions) && subsData.submissions.length > 0) {
+                            await renderProgressionChart(subsData.submissions, solutionData.email);
+                        }
             }
         } catch (e) {
             console.error('Error fetching user submissions:', e);
@@ -209,18 +209,59 @@ async function loadAndVisualizeUserSolution(userId) {
     }
 }
 
-function renderProgressionChart(submissions, email) {
+async function renderProgressionChart(submissions, email) {
     // Show the progression card
     const card = document.getElementById('progression-card');
     const chartDiv = document.getElementById('progression-chart');
     if (!card || !chartDiv) return;
     card.classList.remove('hidden');
 
+    // Helper: robust date parser (accepts ISO and dd/mm/yyyy, hh:mm)
+    function parseSubmittedAt(value) {
+        if (!value) return null;
+
+        const str = String(value).trim();
+
+        // Try pattern dd/mm/yyyy, HH:MM (e.g. 10/10/2025, 12:41)
+        const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s*(\d{1,2}):(\d{2})/);
+        if (m) {
+            const day = parseInt(m[1], 10);
+            const month = parseInt(m[2], 10) - 1;
+            const year = parseInt(m[3], 10);
+            const hour = parseInt(m[4], 10);
+            const minute = parseInt(m[5], 10);
+            // Interpret dd/mm/yyyy timestamps as local time (they likely come from UI input)
+            return new Date(year, month, day, hour, minute);
+        }
+
+        // Try MySQL/SQLite 'YYYY-MM-DD HH:MM:SS' or 'YYYY-MM-DDTHH:MM:SS'
+        // IMPORTANT: Interpret bare datetime strings (no timezone) as UTC to match ranking ISO Z timestamps
+        const m2 = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+        if (m2) {
+            const year = parseInt(m2[1], 10);
+            const month = parseInt(m2[2], 10) - 1;
+            const day = parseInt(m2[3], 10);
+            const hour = parseInt(m2[4], 10);
+            const minute = parseInt(m2[5], 10);
+            const second = m2[6] ? parseInt(m2[6], 10) : 0;
+            // Use Date.UTC so the resulting Date reflects the same absolute instant as an ISO Z timestamp
+            return new Date(Date.UTC(year, month, day, hour, minute, second));
+        }
+
+        // Try native parsing for full ISO strings (with timezone)
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) return d;
+
+        // Fallback: final attempt
+        return new Date(str);
+    }
+
     // Prepare data: ensure submitted_at parsed as Date, objective_value as number
     const parsed = submissions.map(s => ({
-        submitted_at: new Date(s.submitted_at),
+        submitted_at: parseSubmittedAt(s.submitted_at),
         objective_value: Number(s.objective_value),
-        method: s.method || ''
+        method: s.method || '',
+        raw: s
     }));
 
     // Sort by date in case
@@ -247,13 +288,14 @@ function renderProgressionChart(submissions, email) {
         best.push(currentBest === Infinity ? null : currentBest);
     }
 
-    // Line trace for best-so-far (single visible line)
+    // Line trace for best-so-far (single visible continuous line)
     const traceLine = {
         x,
         y: best,
         mode: 'lines',
-        name: 'Mejor solución',
-        line: { dash: 'dash', color: 'green' },
+        // show as "Mi mejor solución" per user
+        name: 'Mi mejor solución',
+        line: { dash: null, color: 'green', width: 2 },
         hoverinfo: 'skip',
         showlegend: true
     };
@@ -264,6 +306,7 @@ function renderProgressionChart(submissions, email) {
         x: improvementX,
         y: improvementY,
         mode: 'markers',
+        // keep this succinct for the legend
         name: 'Envío',
         marker: { size: 8, color: 'green' },
         hovertemplate: 'Valor: %{y:.2f}<br>Método: %{customdata}<extra></extra>',
@@ -271,7 +314,95 @@ function renderProgressionChart(submissions, email) {
         showlegend: true
     };
 
+    // Fetch current competition best to draw horizontal line and marker
+    let competitionBest = null;
+    try {
+        const rankingResp = await fetch('/api/ranking');
+        if (rankingResp.ok) {
+            const rankingData = await rankingResp.json();
+            if (rankingData && Array.isArray(rankingData.ranking) && rankingData.ranking.length > 0) {
+                const top = rankingData.ranking[0];
+                competitionBest = {
+                    value: Number(top.best_objective_value),
+                    method: top.best_method || '',
+                    user: top.email || '',
+                    date: top.last_improvement || null
+                };
+            } else if (rankingData && rankingData.stats && rankingData.stats.bestSolution !== null) {
+                competitionBest = {
+                    value: Number(rankingData.stats.bestSolution),
+                    method: '',
+                    user: '',
+                    date: null
+                };
+            }
+        }
+    } catch (e) {
+        console.error('Error fetching ranking for competition best:', e);
+    }
+
     const data = [traceLine, traceMarkers];
+
+    // If we have a competition best, add a horizontal line and a marker at the date
+    if (competitionBest && typeof competitionBest.value === 'number' && !isNaN(competitionBest.value)) {
+        // horizontal line across x range
+        const xRange = x.length > 0 ? [x[0], x[x.length - 1]] : [new Date(), new Date()];
+        const compLine = {
+            x: xRange,
+            y: [competitionBest.value, competitionBest.value],
+            mode: 'lines',
+            // user requested this label
+            name: 'Mejor solución competición',
+            // made discontinuous and thinner per request
+            line: { dash: 'dash', color: '#FF5722', width: 1 },
+            hoverinfo: 'skip',
+            showlegend: true
+        };
+        data.push(compLine);
+
+        // marker at the exact date of the best solution if available
+        if (competitionBest.date) {
+            let markerX = parseSubmittedAt(competitionBest.date);
+            const compMarker = {
+                x: [markerX],
+                y: [competitionBest.value],
+                mode: 'markers',
+                // user requested label for competition marker
+                name: 'Envío mejor solución competición',
+                marker: { size: 10, color: '#FF5722', symbol: 'diamond' },
+                hovertemplate: `Usuario: ${competitionBest.user || '-'}<br>Método: ${competitionBest.method || '-'}<br>Valor: ${competitionBest.value.toFixed(2)}<extra></extra>`,
+                showlegend: true
+            };
+            data.push(compMarker);
+        } else {
+            // if no date, place marker at rightmost x (visual cue)
+            const rightX = x.length > 0 ? x[x.length - 1] : new Date();
+            const compMarker = {
+                x: [rightX],
+                y: [competitionBest.value],
+                mode: 'markers',
+                name: 'Envío mejor solución competición',
+                marker: { size: 10, color: '#FF5722', symbol: 'diamond' },
+                hovertemplate: `Usuario: ${competitionBest.user || '-'}<br>Método: ${competitionBest.method || '-'}<br>Valor: ${competitionBest.value.toFixed(2)}<extra></extra>`,
+                showlegend: true
+            };
+            data.push(compMarker);
+        }
+    }
+
+    // If competition best exists, add a right-side annotation with the value
+    const layoutAnnotations = [];
+    if (competitionBest && typeof competitionBest.value === 'number' && !isNaN(competitionBest.value)) {
+        // Only show the numeric value at the right as requested (no label)
+        layoutAnnotations.push({
+            xref: 'paper', x: 1.02,
+            y: competitionBest.value,
+            xanchor: 'left',
+            text: `${competitionBest.value.toFixed(2)}`,
+            showarrow: false,
+            font: { color: '#FF5722' }
+        });
+    }
 
     const layout = {
         // No title as requested - keep chart minimal
@@ -279,7 +410,17 @@ function renderProgressionChart(submissions, email) {
         yaxis: { title: 'Función Objetivo' },
         template: 'plotly_white',
         hovermode: 'closest',
-        margin: { t: 20, r: 20, l: 60, b: 80 }
+        // increase right margin to accommodate legend and right annotation
+        margin: { t: 20, r: 200, l: 60, b: 80 },
+        annotations: layoutAnnotations,
+        legend: {
+            // keep legend to the right with compact font to reduce overflow
+            orientation: 'v',
+            x: 1.02,
+            xanchor: 'left',
+            y: 1,
+            font: { size: 11 }
+        }
     };
 
     Plotly.newPlot(chartDiv, data, layout, {responsive: true, displayModeBar: false});
