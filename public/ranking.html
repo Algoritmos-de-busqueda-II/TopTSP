@@ -137,6 +137,15 @@
                 </div>
             </div>
         </div>
+
+        <!-- Competition Best Progression Card -->
+        <div class="card mt-3">
+            <h2>Progreso de la Mejor Solución</h2>
+            <div id="competition-progression" style="width:100%; max-width:900px; height:420px; margin: 0 auto;"></div>
+            <div class="mt-2" style="padding:0 16px 16px 16px;">
+                <p style="margin:0; white-space:normal;"><small><strong>Instrucciones:</strong> Pasa el puntero por encima de los puntos marcados como <em>Nueva mejor solución</em> para ver quién la consiguió, el valor y el método. Para acercar una zona, selecciona arrastrando (clic y arrastre) o usa la rueda del ratón; doble clic para restablecer la vista.</small></p>
+            </div>
+        </div>
     </main>
 
     <footer class="footer">
@@ -144,6 +153,8 @@
     </footer>
 
     <script src="app.js"></script>
+    <!-- Plotly for progression chart -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <script src="ranking.js"></script>
 </body>
 </html>

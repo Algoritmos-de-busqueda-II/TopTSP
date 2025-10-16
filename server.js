@@ -897,6 +897,46 @@ app.get('/visualize', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'visualize.html'));
 });
 
+// Endpoint: competition best history (returns moments when global best improved)
+app.get('/api/competition-best-history', (req, res) => {
+    const db = getDatabase();
+
+    // Get all solutions in chronological order
+    db.all(`
+        SELECT s.objective_value, s.method, s.submitted_at, u.email
+        FROM solutions s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.is_valid = 1
+        ORDER BY s.submitted_at ASC
+        LIMIT 5000
+    `, (err, rows) => {
+        db.close();
+        if (err) {
+            console.error('Error fetching competition history:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        const improvements = [];
+        let currentBest = Infinity;
+
+        for (const r of rows) {
+            const val = Number(r.objective_value);
+            if (isNaN(val)) continue;
+            if (currentBest === Infinity || val < currentBest - 1e-9) {
+                currentBest = val;
+                improvements.push({
+                    date: r.submitted_at,
+                    value: Number(Number(val).toFixed(2)),
+                    user: r.email || '',
+                    method: r.method || ''
+                });
+            }
+        }
+
+        res.json({ improvements });
+    });
+});
+
 // API endpoint to get user's best solution with route
 app.get('/api/user-solution/:userId', (req, res) => {
     const userId = parseInt(req.params.userId);

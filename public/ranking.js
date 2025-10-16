@@ -3,7 +3,104 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // Auto-refresh ranking every 30 seconds
     setInterval(loadRanking, 30000);
+    // Also refresh competition progression chart every 30s
+    setInterval(loadCompetitionProgression, 30000);
+    // Initial load
+    loadCompetitionProgression();
 });
+
+async function loadCompetitionProgression() {
+    const container = document.getElementById('competition-progression');
+    if (!container) return;
+
+    try {
+        const resp = await fetch('/api/competition-best-history');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const improvements = data.improvements || [];
+
+        if (improvements.length === 0) {
+            container.innerHTML = '<p style="text-align:center;">No hay datos de mejoras aún.</p>';
+            return;
+        }
+
+        // Prepare arrays
+        const x = improvements.map(i => new Date(i.date));
+        const y = improvements.map(i => i.value);
+        const users = improvements.map(i => i.user ? i.user.split('@')[0] : '-');
+        const methods = improvements.map(i => i.method || '-');
+
+        // Continuous red line for the best solution over time (step-like)
+        // We'll extend the line up to 'now' so it continues to the current moment
+        let lineX = x.slice();
+        let lineY = y.slice();
+        let lastValue = lineY.length > 0 ? lineY[lineY.length - 1] : null;
+
+        if (lastValue === null) {
+            // No historical improvements — try to fetch current best from /api/ranking
+            try {
+                const rankingResp = await fetch('/api/ranking');
+                if (rankingResp.ok) {
+                    const rankingData = await rankingResp.json();
+                    if (rankingData && rankingData.stats && rankingData.stats.bestSolution !== null) {
+                        lastValue = Number(rankingData.stats.bestSolution);
+                    } else if (rankingData && Array.isArray(rankingData.ranking) && rankingData.ranking.length > 0) {
+                        lastValue = Number(rankingData.ranking[0].best_objective_value);
+                    }
+                }
+            } catch (e) {
+                console.error('Error fetching ranking for default best value:', e);
+            }
+        }
+
+        const now = new Date();
+        if (lastValue !== null) {
+            if (lineX.length === 0) {
+                // create a short horizontal line from 24h ago to now
+                const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                lineX = [yesterday, now];
+                lineY = [lastValue, lastValue];
+            } else {
+                // extend existing series to 'now'
+                lineX.push(now);
+                lineY.push(lastValue);
+            }
+        }
+
+        const lineTrace = {
+            x: lineX,
+            y: lineY,
+            mode: 'lines',
+            name: 'Mejor solución',
+            line: { color: '#D32F2F', width: 2 },
+            hoverinfo: 'skip'
+        };
+
+        // Markers for each improvement
+        const markerTrace = {
+            x: x,
+            y: y,
+            mode: 'markers',
+            name: 'Nueva mejor solución',
+            marker: { color: '#D32F2F', size: 8 },
+            customdata: improvements.map(i => ({ user: i.user || '-', method: i.method || '-', value: i.value })),
+            hovertemplate: 'Usuario: %{customdata.user}<br>Valor: %{customdata.value:.2f}<br>Método: %{customdata.method}<extra></extra>'
+        };
+
+        const layout = {
+            xaxis: { title: 'Fecha' },
+            yaxis: { title: 'Función Objetivo' },
+            template: 'plotly_white',
+            margin: { t: 20, r: 80, l: 60, b: 80 },
+            legend: { orientation: 'h', x: 0.02, y: 1.1 }
+        };
+
+        Plotly.newPlot(container, [lineTrace, markerTrace], layout, { responsive: true, displayModeBar: false });
+
+    } catch (e) {
+        console.error('Error loading competition progression:', e);
+    }
+}
 
 async function checkInstanceAvailability() {
     try {
