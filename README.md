@@ -152,6 +152,9 @@ topabii/
        - La comprobación se realiza en el cliente: no sube ni guarda la solución, solo muestra diagnósticos para ayudar a depurar antes de enviar.
        - Útil para administradores y participantes que quieran verificar soluciones antes de enviarlas.
 
+<img width="573" height="674" alt="image" src="https://github.com/user-attachments/assets/662bfc4f-61c1-45ed-933c-7cba74932717" />
+
+
 ### Para Usuarios
 
 1. **Subir Soluciones**
