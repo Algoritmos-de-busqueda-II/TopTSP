@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadRankingStatus();
     await loadCurrentTSPInstance();
     await loadSystemSettings();
+    // Setup solution validator UI and handlers
+    setupSolutionValidator();
     
     // Create users form handler
     const createUsersForm = document.getElementById('create-users-form');
@@ -373,16 +375,23 @@ function validateDistanceMatrix(matrix, expectedSize) {
 }
 
 function validateTSPSolution(solution) {
-    // Remove extra whitespace and split by comma
-    const numbers = solution.trim().split(',').map(n => n.trim()).filter(n => n);
-    
-    if (numbers.length === 0) {
+    // Split by comma but keep empty tokens to detect format errors like ",," or leading/trailing commas
+    const tokens = solution.split(',').map(n => n.trim());
+
+    if (tokens.length === 0 || (tokens.length === 1 && tokens[0] === '')) {
         return { valid: false, error: 'La solución está vacía' };
     }
-    
+
+    // Detect empty tokens (format error: consecutive commas, leading or trailing comma)
+    const emptyIndices = [];
+    tokens.forEach((t, i) => { if (t === '') emptyIndices.push(i + 1); }); // 1-based positions
+    if (emptyIndices.length) {
+        return { valid: false, error: `Formato inválido: tokens vacíos en posiciones ${emptyIndices.join(', ')} (comas consecutivas o coma inicial/final)` };
+    }
+
     // Convert to integers
     const intNumbers = [];
-    for (const num of numbers) {
+    for (const num of tokens) {
         const parsed = parseInt(num, 10);
         if (isNaN(parsed) || parsed <= 0) {
             return { valid: false, error: `"${num}" no es un número válido` };
@@ -415,6 +424,153 @@ function validateTSPSolution(solution) {
     }
     
     return { valid: true, numbers: intNumbers };
+}
+
+// New: validate solution against current instance dimension and render helpful diagnostics
+function setupSolutionValidator() {
+    const textarea = document.getElementById('solution-textarea');
+    const resultDiv = document.getElementById('solution-validator-result');
+    const clearBtn = document.getElementById('clear-solution-btn');
+
+    if (!textarea || !resultDiv) return;
+
+    async function validateAndRender() {
+        const text = textarea.value || '';
+        const instanceInfo = await getCurrentTSPInstance();
+        const dimension = instanceInfo.hasInstance && instanceInfo.instance && instanceInfo.instance.dimension ? instanceInfo.instance.dimension : null;
+
+        // Keep empty tokens so we can detect format problems like ",," or leading/trailing commas
+        const parsedRaw = text.split(',').map(s => s.trim());
+        if (parsedRaw.length === 0 || (parsedRaw.length === 1 && parsedRaw[0] === '')) {
+            resultDiv.innerHTML = '<div class="alert alert-info">Introduce la solución para validar.</div>';
+            return;
+        }
+
+        // Detect empty tokens -> format error
+        const emptyPositions = parsedRaw.map((t, i) => t === '' ? i + 1 : -1).filter(i => i !== -1);
+        if (emptyPositions.length) {
+            resultDiv.innerHTML = `<div class="alert alert-danger"><strong>Formato inválido:</strong> tokens vacíos en posiciones ${emptyPositions.join(', ')} (coma inicial, coma final o comas consecutivas).</div>`;
+            return;
+        }
+
+        const nums = [];
+        const invalidTokens = [];
+        for (const tok of parsedRaw) {
+            const n = parseInt(tok, 10);
+            if (Number.isNaN(n)) invalidTokens.push(tok);
+            else nums.push(n);
+        }
+
+        if (invalidTokens.length) {
+            resultDiv.innerHTML = `<div class="alert alert-danger">Tokens no numéricos: <strong>${invalidTokens.join(', ')}</strong></div>`;
+            return;
+        }
+
+        const counts = new Map();
+        for (const n of nums) counts.set(n, (counts.get(n) || 0) + 1);
+        const duplicates = [...counts.entries()].filter(([k,v]) => v>1).map(([k]) => k);
+
+        let outOfRange = [];
+        let missing = [];
+
+        if (dimension) {
+            for (const n of nums) {
+                if (n < 1 || n > dimension) outOfRange.push(n);
+            }
+
+            // compute missing numbers from 1..dimension
+            const present = new Set(nums);
+            for (let i = 1; i <= dimension; i++) {
+                if (!present.has(i)) missing.push(i);
+            }
+        } else {
+            // no instance loaded: infer expected as 1..max(nums)
+            const maxNum = Math.max(...nums);
+            const present = new Set(nums);
+            for (let i = 1; i <= maxNum; i++) if (!present.has(i)) missing.push(i);
+            // outOfRange not applicable
+        }
+
+        // Build result HTML
+        // Build a clearer, more actionable summary
+        const red = 'color:#C41E3A;font-weight:700';
+        const green = 'color:#28a745;font-weight:700';
+        const amber = 'color:#e0a800;font-weight:700';
+
+        let html = '<div class="validator-summary">';
+
+        // Nodos detectados vs esperados (más explícito)
+        if (dimension) {
+            if (nums.length === dimension) {
+                html += `<div><strong>Nodos detectados:</strong> <span style="${green}">${nums.length}</span> (esperado: ${dimension})</div>`;
+            } else if (nums.length < dimension) {
+                const diff = dimension - nums.length;
+                html += `<div><strong>Nodos detectados:</strong> <span style="${red}">${nums.length} — deberían ser ${dimension} (faltan ${diff})</span></div>`;
+            } else {
+                const diff = nums.length - dimension;
+                html += `<div><strong>Nodos detectados:</strong> <span style="${red}">${nums.length} — deberían ser ${dimension} (sobran ${diff})</span></div>`;
+            }
+        } else {
+            html += `<div><strong>Nodos detectados:</strong> ${nums.length}</div>`;
+        }
+
+        // Nodos únicos y duplicados (más legible)
+        const uniqueCount = new Set(nums).size;
+        if (dimension) {
+            if (uniqueCount === dimension) {
+                html += `<div><strong>Nodos únicos:</strong> <span style="${green}">${uniqueCount}</span> (esperado: ${dimension})</div>`;
+            } else if (uniqueCount < dimension) {
+                const diff = dimension - uniqueCount;
+                html += `<div><strong>Nodos únicos:</strong> <span style="${red}">${uniqueCount} — deberían ser ${dimension} (faltan ${diff})</span></div>`;
+            } else {
+                const diff = uniqueCount - dimension;
+                html += `<div><strong>Nodos únicos:</strong> <span style="${red}">${uniqueCount} — deberían ser ${dimension} (sobran ${diff})</span></div>`;
+            }
+        } else {
+            if (uniqueCount === nums.length) {
+                html += `<div><strong>Nodos únicos:</strong> <span style="${green}">${uniqueCount}</span></div>`;
+            } else {
+                const dupCount = nums.length - uniqueCount;
+                html += `<div><strong>Nodos únicos:</strong> <span style="${amber}">${uniqueCount}</span> — <span style="${red}">${dupCount} duplicado(s)</span></div>`;
+            }
+        }
+
+        // Mostrar duplicados con conteo
+        if (duplicates.length) {
+            html += `<div style="margin-top:.6rem"><strong style="${red}">Nodos duplicados (${duplicates.length}):</strong> <span style="${red}">${duplicates.join(', ')}</span></div>`;
+        } else {
+            html += `<div style="margin-top:.6rem"><strong>Nodos duplicados:</strong> <span style="${green}">Ninguno</span></div>`;
+        }
+
+        // Fuera de rango
+        if (outOfRange.length) {
+            html += `<div style="margin-top:.6rem"><strong style="${red}">Fuera de rango (${outOfRange.length}):</strong> <span style="${red}">${outOfRange.join(', ')}</span></div>`;
+        }
+
+        // Missing: más explícito
+        if (missing.length === 0) {
+            html += `<div style="margin-top:.6rem"><strong>Faltan:</strong> <span style="${green}">0</span></div>`;
+        } else {
+            const showMissing = missing.slice(0, 200);
+            const more = missing.length > showMissing.length ? ` (+${missing.length - showMissing.length} más)` : '';
+            html += `<div style="margin-top:.6rem"><strong style="${red}">Faltan ${missing.length} nodo(s):</strong> <span style="${red}">${showMissing.join(', ')}${more}</span></div>`;
+        }
+
+        html += '</div>';
+        resultDiv.innerHTML = html;
+    }
+
+    // real-time validation as user types (debounce)
+    let timer = null;
+    textarea.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(validateAndRender, 250);
+    });
+    clearBtn && clearBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        textarea.value = '';
+        document.getElementById('solution-validator-result').innerHTML = '';
+    });
 }
 
 async function loadCurrentTSPInstance() {

@@ -206,6 +206,29 @@
                 </table>
             </div>
         </div>
+
+        <!-- Solution Validator Card -->
+        <div class="card" id="solution-validator-card">
+            <h2>Validador de Soluciones</h2>
+            <p>Pega aquí la solución en el formato pedido (lista de nodos separados por comas). La herramienta comprobará:</p>
+            <ul>
+                <li>Que la ruta tenga la longitud esperada por la instancia</li>
+                <li>Que todos los nodos estén dentro del rango de la instancia</li>
+                <li>Qué números faltan o están duplicados</li>
+            </ul>
+
+            <div class="form-group">
+                <label for="solution-textarea">Solución (coma-separada):</label>
+                <textarea id="solution-textarea" class="form-control" rows="6" placeholder="Ej: 1,2,3,4,..."></textarea>
+            </div>
+
+            <div class="grid">
+                <button id="clear-solution-btn" class="btn btn-secondary">Limpiar</button>
+            </div>
+
+            <div id="solution-validator-result" class="mt-3"></div>
+            <small class="text-muted">La verificación usa la instancia TSP cargada actualmente (dimensión mostrada en la sección "Gestionar Instancia TSP").</small>
+        </div>
     </main>
 
     <footer class="footer">

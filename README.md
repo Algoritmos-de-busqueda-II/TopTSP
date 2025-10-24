@@ -21,8 +21,6 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
     * [Visualización TSP](#visualización-tsp)
 7.  [API Endpoints](#api-endpoints)
 8.  [Validaciones Implementadas](#validaciones-implementadas)
-    * [Soluciones TSP](#soluciones-tsp)
-    * [Instancias TSPLIB](#instancias-tsplib)
 9.  [Seguridad](#seguridad)
 10. [Estilo Visual URJC](#estilo-visual-urjc)
 11. [Base de Datos](#base-de-datos)
@@ -143,6 +141,16 @@ topabii/
   
 <img width="573" height="630" alt="image" src="https://github.com/user-attachments/assets/375603f2-2cc4-4532-a719-2d0d04db7ff6" />
 
+
+   5. **Validador de Soluciones**
+       - Herramienta disponible en el panel de administración (sección "Gestión de Usuarios").
+       - Permite pegar una solución (nodos separados por comas) y comprobar rápidamente:
+          - Si la longitud de la ruta coincide con la dimensión de la instancia cargada.
+          - Si todos los nodos están dentro del rango esperado (1..DIMENSION).
+          - Si existen errores de formato (comas consecutivas, coma inicial/final).
+          - Qué nodos faltan y qué nodos están duplicados (listados para depuración).
+       - La comprobación se realiza en el cliente: no sube ni guarda la solución, solo muestra diagnósticos para ayudar a depurar antes de enviar.
+       - Útil para administradores y participantes que quieran verificar soluciones antes de enviarlas.
 
 ### Para Usuarios
 
