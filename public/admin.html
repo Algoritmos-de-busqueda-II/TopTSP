@@ -42,7 +42,9 @@
                     <div class="form-group">
                         <label for="emails">Correos Electrónicos:</label>
                         <textarea id="emails" name="emails" class="form-control" rows="4" 
-                                  placeholder="usuario1@urjc.es; usuario2@urjc.es; usuario3@urjc.es" required></textarea>
+                                  placeholder="usuario1@urjc.es; usuario2@urjc.es; usuario3@urjc.es" required
+                                  oninvalid="this.setCustomValidity('Por favor, introduce al menos un correo electrónico')"
+                                  oninput="this.setCustomValidity('')"></textarea>
                     </div>
                     <button type="submit" class="btn btn-primary">Crear Usuarios</button>
                 </form>
@@ -74,7 +76,9 @@
                     <div class="form-group">
                         <label for="tsp-data">Datos TSP (Formato TSPLIB):</label>
                         <textarea id="tsp-data" name="tspData" class="form-control" rows="12" 
-                                  placeholder="NAME: berlin52&#10;TYPE: TSP&#10;COMMENT: 52 locations in Berlin&#10;DIMENSION: 52&#10;EDGE_WEIGHT_TYPE: EUC_2D&#10;NODE_COORD_SECTION&#10;1 565.0 575.0&#10;2 25.0 185.0&#10;...&#10;EOF" required></textarea>
+                                  placeholder="NAME: berlin52&#10;TYPE: TSP&#10;COMMENT: 52 locations in Berlin&#10;DIMENSION: 52&#10;EDGE_WEIGHT_TYPE: EUC_2D&#10;NODE_COORD_SECTION&#10;1 565.0 575.0&#10;2 25.0 185.0&#10;...&#10;EOF" required
+                                  oninvalid="this.setCustomValidity('Por favor, introduce los datos TSP en formato TSPLIB')"
+                                  oninput="this.setCustomValidity('')"></textarea>
                         <small>Pega aquí los datos en formato TSPLIB estándar</small>
                     </div>
 
@@ -155,7 +159,9 @@
                     <h3>Nombre de la Instancia:</h3>
                     <div class="form-group">
                         <input type="text" id="instance-name-input" class="form-control" 
-                               placeholder="Berlin 52" required>
+                               placeholder="Berlin 52" required
+                               oninvalid="this.setCustomValidity('Por favor, introduce un nombre para la instancia')"
+                               oninput="this.setCustomValidity('')">
                         <button class="btn btn-primary btn-block mt-2" onclick="setInstanceName()">
                             Actualizar Nombre
                         </button>

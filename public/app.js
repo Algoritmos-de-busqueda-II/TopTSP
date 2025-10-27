@@ -1,30 +1,65 @@
-// Common utilities and functions used across the application
+// Utilidades y funciones comunes utilizadas en toda la aplicación
 
-function showAlert(container, message, type = 'info') {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type}`;
-    alertDiv.innerHTML = message;
-    
-    const targetContainer = typeof container === 'string' 
-        ? document.getElementById(container) 
-        : container;
-    
-    if (targetContainer) {
-        // Clear existing alerts safely
-        while (targetContainer.firstChild) {
-            targetContainer.removeChild(targetContainer.firstChild);
-        }
-        targetContainer.appendChild(alertDiv);
-        
-        // Auto-hide after 5 seconds for success messages
-        if (type === 'success') {
-            setTimeout(() => {
-                if (alertDiv && alertDiv.parentNode) {
-                    alertDiv.parentNode.removeChild(alertDiv);
-                }
-            }, 5000);
-        }
+function showToast(message, type = 'info', title = null) {
+    // Crear contenedor de toast si no existe
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
     }
+
+    // Crear elemento toast
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+
+    // Mapeo de iconos
+    const icons = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+
+    // Títulos predeterminados
+    const defaultTitles = {
+        success: 'Éxito',
+        error: 'Error',
+        warning: 'Advertencia',
+        info: 'Información'
+    };
+
+    const toastTitle = title || defaultTitles[type] || 'Notificación';
+    const toastIcon = icons[type] || 'ℹ';
+
+    toast.innerHTML = `
+        <div class="toast-icon">${toastIcon}</div>
+        <div class="toast-content">
+            <div class="toast-title">${toastTitle}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+        <div class="toast-progress"></div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto-eliminar después de 5 segundos
+    setTimeout(() => {
+        if (toast && toast.parentElement) {
+            toast.classList.add('toast-exit');
+            setTimeout(() => {
+                if (toast && toast.parentElement) {
+                    toast.remove();
+                }
+            }, 300);
+        }
+    }, 5000);
+}
+
+// Función heredada para compatibilidad con versiones anteriores - redirige a showToast
+function showAlert(container, message, type = 'info') {
+    showToast(message, type);
 }
 
 function clearAlerts(containerId) {

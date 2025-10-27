@@ -78,7 +78,9 @@
                     <div class="form-group">
                         <label for="solution">Solución:</label>
                         <input type="text" id="solution" name="solution" class="form-control"
-                               placeholder="1, 2, 3, 4, 5" required>
+                               placeholder="1, 2, 3, 4, 5" required
+                               oninvalid="this.setCustomValidity('Por favor, introduce una solución válida')"
+                               oninput="this.setCustomValidity('')">
                         <small>Introduce los números de los nodos separados por comas</small>
                     </div>
                     <div class="form-group">
@@ -170,13 +172,17 @@
                     <div class="form-group">
                         <label for="new-password">Nueva Contraseña:</label>
                         <input type="password" id="new-password" name="newPassword" class="form-control" 
-                               required minlength="6" placeholder="Mínimo 6 caracteres">
+                               required minlength="6" placeholder="Mínimo 6 caracteres"
+                               oninvalid="this.setCustomValidity('Por favor, introduce una contraseña de al menos 6 caracteres')"
+                               oninput="this.setCustomValidity('')">
                     </div>
 
                     <div class="form-group">
                         <label for="confirm-password">Confirmar Contraseña:</label>
                         <input type="password" id="confirm-password" name="confirmPassword" class="form-control" 
-                               required minlength="6">
+                               required minlength="6"
+                               oninvalid="this.setCustomValidity('Por favor, confirma tu contraseña')"
+                               oninput="this.setCustomValidity('')">
                     </div>
 
                     <div class="grid grid-2">

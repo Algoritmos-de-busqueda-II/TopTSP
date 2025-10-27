@@ -17,14 +17,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         document.getElementById('admin-link').classList.remove('hidden');
     }
     
-    // Check if there's a current instance available
+    // Verificar si hay una instancia actual disponible
     await checkInstanceAvailability();
 
-    // Load user statistics and solution history
+    // Cargar estadísticas del usuario e historial de soluciones
     await loadUserStats();
     await loadSolutionHistory();
     
-    // Solution form handler
+    // Manejador del formulario de soluciones
     solutionForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         clearAlerts('alert-container');
@@ -34,14 +34,14 @@ document.addEventListener('DOMContentLoaded', async function() {
         const method = formData.get('method').trim();
         
         if (!solution) {
-            showAlert('alert-container', 'Por favor, introduce una solución.', 'danger');
+            showToast('Por favor, introduce una solución válida.', 'warning', 'Solución vacía');
             return;
         }
         
-        // Validate solution format
+        // Validar formato de la solución
         const validation = validateTSPSolution(solution);
         if (!validation.valid) {
-            showAlert('alert-container', validation.error, 'danger');
+            showToast(validation.error, 'error', 'Solución inválida');
             return;
         }
         
@@ -60,30 +60,38 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             
             if (response.ok) {
-                const message = data.improved 
-                    ? `¡Excelente! Nueva mejor solución con valor ${formatObjectiveValue(data.objectiveValue)}` 
-                    : `Solución enviada (valor: ${formatObjectiveValue(data.objectiveValue)}). No mejoró tu mejor resultado.`;
+                if (data.improved) {
+                    showToast(
+                        `Has mejorado tu mejor solución con un valor de ${formatObjectiveValue(data.objectiveValue)}. ¡Sigue así!`,
+                        'success',
+                        '¡Excelente trabajo!'
+                    );
+                } else {
+                    showToast(
+                        `Solución registrada con valor ${formatObjectiveValue(data.objectiveValue)}. No ha mejorado tu mejor resultado anterior.`,
+                        'info',
+                        'Solución enviada'
+                    );
+                }
                 
-                showAlert('alert-container', message, data.improved ? 'success' : 'info');
-                
-                // Clear the form
+                // Limpiar el formulario
                 solutionForm.reset();
                 
-                // Reload user stats and solution history
+                // Recargar estadísticas del usuario e historial de soluciones
                 await loadUserStats();
                 await loadSolutionHistory();
             } else {
-                showAlert('alert-container', data.error || 'Error al enviar la solución', 'danger');
+                showToast(data.error || 'No se pudo procesar tu solución. Inténtalo de nuevo.', 'error', 'Error al enviar');
             }
         } catch (error) {
             console.error('Solution submission error:', error);
-            showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
+            showToast('No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.', 'error', 'Error de conexión');
         } finally {
             setLoading(submitBtn, false);
         }
     });
     
-    // Password form handler
+    // Manejador del formulario de contraseña
     passwordForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         clearAlerts('alert-container');
@@ -93,17 +101,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         const confirmPassword = formData.get('confirmPassword');
         
         if (!newPassword || !confirmPassword) {
-            showAlert('alert-container', 'Por favor, completa todos los campos.', 'danger');
+            showToast('Por favor, completa todos los campos de contraseña.', 'warning', 'Campos incompletos');
             return;
         }
         
         if (newPassword.length < 6) {
-            showAlert('alert-container', 'La contraseña debe tener al menos 6 caracteres.', 'danger');
+            showToast('La contraseña debe tener al menos 6 caracteres para mayor seguridad.', 'warning', 'Contraseña demasiado corta');
             return;
         }
         
         if (newPassword !== confirmPassword) {
-            showAlert('alert-container', 'Las contraseñas no coinciden.', 'danger');
+            showToast('Las contraseñas introducidas no coinciden. Por favor, verifica e inténtalo de nuevo.', 'error', 'Error de confirmación');
             return;
         }
         
@@ -122,18 +130,17 @@ document.addEventListener('DOMContentLoaded', async function() {
             const data = await response.json();
             
             if (response.ok) {
-                showAlert('password-alert-container', 'Contraseña cambiada exitosamente.', 'success');
+                showToast('Tu contraseña ha sido actualizada correctamente.', 'success', 'Contraseña cambiada');
                 passwordForm.reset();
                 setTimeout(() => {
                     hidePasswordModal();
-                    showAlert('alert-container', 'Contraseña cambiada exitosamente.', 'success');
                 }, 1500);
             } else {
-                showAlert('password-alert-container', data.error || 'Error al cambiar la contraseña', 'danger');
+                showToast(data.error || 'No se pudo cambiar la contraseña. Inténtalo de nuevo.', 'error', 'Error al cambiar contraseña');
             }
         } catch (error) {
             console.error('Password change error:', error);
-            showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
+            showToast('No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.', 'error', 'Error de conexión');
         } finally {
             setLoading(submitBtn, false);
         }
