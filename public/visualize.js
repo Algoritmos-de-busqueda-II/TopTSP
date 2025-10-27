@@ -289,119 +289,97 @@ async function renderProgressionChart(submissions, email) {
     }
 
     // Line trace for best-so-far (single visible continuous line)
+    // Made thicker so when user has the best solution, green contains the red line
     const traceLine = {
         x,
         y: best,
         mode: 'lines',
         // show as "Mi mejor solución" per user
         name: 'Mi mejor solución',
-        line: { dash: null, color: 'green', width: 2 },
+        line: { dash: null, color: 'green', width: 4 },
         hoverinfo: 'skip',
         showlegend: true
     };
 
     // Markers trace for actual improvements (hover shows value and method)
     // Show in legend as 'Envío'
+    // Made larger so when user has the best solution, green markers contain the red markers
     const traceMarkers = {
         x: improvementX,
         y: improvementY,
         mode: 'markers',
         // keep this succinct for the legend
         name: 'Envío',
-        marker: { size: 8, color: 'green' },
+        marker: { size: 12, color: 'green' },
         hovertemplate: 'Valor: %{y:.2f}<br>Método: %{customdata}<extra></extra>',
         customdata: improvementMethods,
         showlegend: true
     };
 
-    // Fetch current competition best to draw horizontal line and marker
-    let competitionBest = null;
+    // Fetch competition best history to draw progression line and markers
+    let competitionProgressionLine = null;
+    let competitionProgressionMarkers = null;
     try {
-        const rankingResp = await fetch('/api/ranking');
-        if (rankingResp.ok) {
-            const rankingData = await rankingResp.json();
-            if (rankingData && Array.isArray(rankingData.ranking) && rankingData.ranking.length > 0) {
-                const top = rankingData.ranking[0];
-                competitionBest = {
-                    value: Number(top.best_objective_value),
-                    method: top.best_method || '',
-                    user: top.email || '',
-                    date: top.last_improvement || null
+        const historyResp = await fetch('/api/competition-best-history');
+        if (historyResp.ok) {
+            const historyData = await historyResp.json();
+            const improvements = historyData.improvements || [];
+
+            if (improvements.length > 0) {
+                // Prepare arrays for competition progression
+                const compX = improvements.map(i => parseSubmittedAt(i.date));
+                const compY = improvements.map(i => i.value);
+                const compUsers = improvements.map(i => i.user ? i.user.split('@')[0] : '-');
+                const compMethods = improvements.map(i => i.method || '-');
+
+                // Extend the line to current time with last value
+                let lineX = compX.slice();
+                let lineY = compY.slice();
+                const lastValue = lineY[lineY.length - 1];
+                const now = new Date();
+                lineX.push(now);
+                lineY.push(lastValue);
+
+                // Competition progression line (red)
+                competitionProgressionLine = {
+                    x: lineX,
+                    y: lineY,
+                    mode: 'lines',
+                    name: 'Progreso mejor solución',
+                    line: { color: '#C41E3A', width: 2 },
+                    hoverinfo: 'skip',
+                    showlegend: true
                 };
-            } else if (rankingData && rankingData.stats && rankingData.stats.bestSolution !== null) {
-                competitionBest = {
-                    value: Number(rankingData.stats.bestSolution),
-                    method: '',
-                    user: '',
-                    date: null
+
+                // Competition progression markers
+                competitionProgressionMarkers = {
+                    x: compX,
+                    y: compY,
+                    mode: 'markers',
+                    name: 'Nueva mejor solución',
+                    marker: { color: '#C41E3A', size: 8 },
+                    hovertemplate: 'Usuario: %{customdata.user}<br>Valor: %{customdata.value:.2f}<br>Método: %{customdata.method}<extra></extra>',
+                    customdata: improvements.map(i => ({ 
+                        user: i.user ? i.user.split('@')[0] : '-', 
+                        method: i.method || '-', 
+                        value: i.value 
+                    })),
+                    showlegend: true
                 };
             }
         }
     } catch (e) {
-        console.error('Error fetching ranking for competition best:', e);
+        console.error('Error fetching competition best history:', e);
     }
 
     const data = [traceLine, traceMarkers];
 
-    // If we have a competition best, add a horizontal line and a marker at the date
-    if (competitionBest && typeof competitionBest.value === 'number' && !isNaN(competitionBest.value)) {
-        // horizontal line across x range
-        const xRange = x.length > 0 ? [x[0], x[x.length - 1]] : [new Date(), new Date()];
-        const compLine = {
-            x: xRange,
-            y: [competitionBest.value, competitionBest.value],
-            mode: 'lines',
-            // user requested this label
-            name: 'Mejor solución competición',
-            // made discontinuous and thinner per request
-            line: { dash: 'dash', color: '#FF5722', width: 1 },
-            hoverinfo: 'skip',
-            showlegend: true
-        };
-        data.push(compLine);
-
-        // marker at the exact date of the best solution if available
-        if (competitionBest.date) {
-            let markerX = parseSubmittedAt(competitionBest.date);
-            const compMarker = {
-                x: [markerX],
-                y: [competitionBest.value],
-                mode: 'markers',
-                // user requested label for competition marker
-                name: 'Envío mejor solución competición',
-                marker: { size: 10, color: '#FF5722', symbol: 'diamond' },
-                hovertemplate: `Usuario: ${competitionBest.user || '-'}<br>Método: ${competitionBest.method || '-'}<br>Valor: ${competitionBest.value.toFixed(2)}<extra></extra>`,
-                showlegend: true
-            };
-            data.push(compMarker);
-        } else {
-            // if no date, place marker at rightmost x (visual cue)
-            const rightX = x.length > 0 ? x[x.length - 1] : new Date();
-            const compMarker = {
-                x: [rightX],
-                y: [competitionBest.value],
-                mode: 'markers',
-                name: 'Envío mejor solución competición',
-                marker: { size: 10, color: '#FF5722', symbol: 'diamond' },
-                hovertemplate: `Usuario: ${competitionBest.user || '-'}<br>Método: ${competitionBest.method || '-'}<br>Valor: ${competitionBest.value.toFixed(2)}<extra></extra>`,
-                showlegend: true
-            };
-            data.push(compMarker);
-        }
+    // Add competition progression if available
+    if (competitionProgressionLine) {
+        data.push(competitionProgressionLine);
     }
-
-    // If competition best exists, add a right-side annotation with the value
-    const layoutAnnotations = [];
-    if (competitionBest && typeof competitionBest.value === 'number' && !isNaN(competitionBest.value)) {
-        // Only show the numeric value at the right as requested (no label)
-        layoutAnnotations.push({
-            xref: 'paper', x: 1.02,
-            y: competitionBest.value,
-            xanchor: 'left',
-            text: `${competitionBest.value.toFixed(2)}`,
-            showarrow: false,
-            font: { color: '#FF5722' }
-        });
+    if (competitionProgressionMarkers) {
+        data.push(competitionProgressionMarkers);
     }
 
     const layout = {
@@ -410,16 +388,11 @@ async function renderProgressionChart(submissions, email) {
         yaxis: { title: 'Función Objetivo' },
         template: 'plotly_white',
         hovermode: 'closest',
-        // increase right margin to accommodate legend and right annotation
-        margin: { t: 20, r: 200, l: 60, b: 80 },
-        annotations: layoutAnnotations,
+        margin: { t: 20, r: 80, l: 60, b: 80 },
         legend: {
-            // keep legend to the right with compact font to reduce overflow
-            orientation: 'v',
-            x: 1.02,
-            xanchor: 'left',
-            y: 1,
-            font: { size: 11 }
+            orientation: 'h',
+            x: 0.02,
+            y: 1.1
         }
     };
 
