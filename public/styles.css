@@ -36,6 +36,11 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* Prevent horizontal scroll leaking off-canvas elements on mobile */
+html, body {
+    overflow-x: hidden;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 12px;
@@ -62,7 +67,7 @@ body {
     box-shadow: 0 4px 20px rgba(196, 30, 58, 0.25);
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1200; /* Above mobile overlay to keep menu clickable */
     backdrop-filter: blur(10px);
 }
 
@@ -177,7 +182,8 @@ body {
         padding: 4rem 0 2rem 0;
         box-shadow: -2px 0 10px rgba(0,0,0,0.3);
         transition: right 0.3s ease-in-out;
-        z-index: 1000;
+        z-index: 1100; /* Ensure above overlays/modals on mobile */
+        pointer-events: auto; /* Guarantee interactivity on iOS/Android */
     }
 
     .nav.active {
@@ -224,10 +230,12 @@ body {
         height: 100vh;
         background: rgba(0,0,0,0.5);
         z-index: 999;
+        pointer-events: none; /* Disabled until active */
     }
 
     .mobile-menu-overlay.active {
         display: block;
+        pointer-events: auto; /* Enable to allow click-to-close */
     }
 }
 
