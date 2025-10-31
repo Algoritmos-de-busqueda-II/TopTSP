@@ -913,6 +913,35 @@ textarea.form-control {
     transform: scale(1.1);
 }
 
+/* Small inline author icons next to the author name */
+.author-links {
+    display: inline-flex;
+    gap: 8px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.author-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--urjc-white);
+    transition: var(--transition);
+}
+
+.author-links a svg {
+    width: 14px;
+    height: 14px;
+}
+
+.author-links a:hover {
+    transform: translateY(-2px);
+}
+
 /* Animation */
 @keyframes fadeIn {
     from { 
