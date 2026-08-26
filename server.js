@@ -299,8 +299,138 @@ app.post('/api/admin/reset-ranking', requireAdmin, (req, res) => {
             if (err) {
                 return res.status(500).json({ error: 'Error clearing rankings' });
             }
-            
+
             res.json({ success: true });
+        });
+    });
+});
+
+// Default Berlin52 TSPLIB instance used to reseed the system on a full reset
+const BERLIN52_TSPLIB = `NAME: berlin52
+TYPE: TSP
+COMMENT: 52 locations in Berlin (Groetschel)
+DIMENSION: 52
+EDGE_WEIGHT_TYPE: EUC_2D
+NODE_COORD_SECTION
+1 565.0 575.0
+2 25.0 185.0
+3 345.0 750.0
+4 945.0 685.0
+5 845.0 655.0
+6 880.0 660.0
+7 25.0 230.0
+8 525.0 1000.0
+9 580.0 1175.0
+10 650.0 1130.0
+11 1605.0 620.0
+12 1220.0 580.0
+13 1465.0 200.0
+14 1530.0 5.0
+15 845.0 680.0
+16 725.0 370.0
+17 145.0 665.0
+18 415.0 635.0
+19 510.0 875.0
+20 560.0 365.0
+21 300.0 465.0
+22 520.0 585.0
+23 480.0 415.0
+24 835.0 625.0
+25 975.0 580.0
+26 1215.0 245.0
+27 1320.0 315.0
+28 1250.0 400.0
+29 660.0 180.0
+30 410.0 250.0
+31 420.0 555.0
+32 575.0 665.0
+33 1150.0 1160.0
+34 700.0 580.0
+35 685.0 595.0
+36 685.0 610.0
+37 770.0 610.0
+38 795.0 645.0
+39 720.0 635.0
+40 760.0 650.0
+41 475.0 960.0
+42 95.0 260.0
+43 875.0 920.0
+44 700.0 500.0
+45 555.0 815.0
+46 830.0 485.0
+47 1170.0 65.0
+48 830.0 610.0
+49 605.0 625.0
+50 595.0 360.0
+51 1340.0 725.0
+52 1740.0 245.0
+EOF`;
+
+// Full system reset (admin only): wipes users, solutions, rankings and TSP
+// instances, keeps admin accounts, and reseeds the default Berlin52 instance
+app.post('/api/admin/full-reset', requireAdmin, (req, res) => {
+    const dbPath = path.join(__dirname, 'topabii.db');
+
+    // Safety backup before a fully destructive operation
+    let safetyBackupFilename;
+    try {
+        safetyBackupFilename = `topabii_before_full_reset_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.db`;
+        fs.copyFileSync(dbPath, path.join(__dirname, safetyBackupFilename));
+    } catch (error) {
+        console.error('Full reset safety backup error:', error);
+        return res.status(500).json({ error: 'Error al crear el backup de seguridad previo al reinicio' });
+    }
+
+    const parsedTSP = parseTSPLIB(BERLIN52_TSPLIB);
+    if (!parsedTSP.success) {
+        return res.status(500).json({ error: 'Error al preparar la instancia Berlin52 por defecto' });
+    }
+
+    const db = getDatabase();
+
+    db.serialize(() => {
+        db.run('DELETE FROM solutions');
+        db.run('DELETE FROM user_best_solutions');
+        db.run('DELETE FROM tsp_instances');
+        db.run('DELETE FROM users WHERE is_admin = 0');
+        db.run('DELETE FROM system_settings');
+
+        db.run(`INSERT INTO tsp_instances (name, type, comment, dimension, edge_weight_type,
+                coordinates, distance_matrix, original_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [parsedTSP.name, parsedTSP.type, parsedTSP.comment, parsedTSP.dimension,
+             parsedTSP.edgeWeightType, JSON.stringify(parsedTSP.coordinates),
+             JSON.stringify(parsedTSP.distanceMatrix), BERLIN52_TSPLIB], function (err) {
+            if (err) {
+                db.close();
+                return res.status(500).json({ error: 'Error al crear la instancia Berlin52 por defecto' });
+            }
+
+            const instanceId = this.lastID;
+            const defaultSettings = [
+                ['ranking_frozen', 'false'],
+                ['current_tsp_instance', String(instanceId)],
+                ['frozen_ranking_data', ''],
+                ['frozen_ranking_timestamp', ''],
+                ['competition_end_date', ''],
+                ['instance_name', 'Berlin 52']
+            ];
+
+            const insertSetting = (index) => {
+                if (index >= defaultSettings.length) {
+                    db.close();
+                    return res.json({ success: true, instanceId, safetyBackup: safetyBackupFilename });
+                }
+                const [key, value] = defaultSettings[index];
+                db.run('INSERT INTO system_settings (key, value) VALUES (?, ?)', [key, value], (err) => {
+                    if (err) {
+                        db.close();
+                        return res.status(500).json({ error: 'Error al restablecer la configuración del sistema' });
+                    }
+                    insertSetting(index + 1);
+                });
+            };
+
+            insertSetting(0);
         });
     });
 });

@@ -916,3 +916,71 @@ async function deleteUser(userId, email) {
         showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
     }
 }
+
+async function fullSystemReset() {
+    clearAlerts('alert-container');
+
+    const confirmed = confirm(
+        '⚠️ ADVERTENCIA CRÍTICA: ¿Reiniciar COMPLETAMENTE el sistema?\n\n' +
+        'Esta acción eliminará permanentemente:\n' +
+        '• Todos los usuarios (excepto los administradores)\n' +
+        '• Todas las soluciones y el ranking\n' +
+        '• Todas las instancias TSP subidas\n' +
+        '• Toda la configuración de la competición\n\n' +
+        'Se dejará configurada la instancia Berlin52 por defecto.\n' +
+        'Esta acción NO se puede deshacer.\n\n' +
+        '¿Continuar?'
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    const typedConfirmation = prompt(
+        'CONFIRMACIÓN FINAL:\n\n' +
+        'Escribe REINICIAR (en mayúsculas) para confirmar el reinicio completo del sistema.'
+    );
+
+    if (typedConfirmation !== 'REINICIAR') {
+        showAlert('alert-container', 'Reinicio cancelado: la confirmación no coincide.', 'info');
+        return;
+    }
+
+    const resetBtn = document.getElementById('full-reset-btn');
+    setLoading(resetBtn, true);
+
+    try {
+        showAlert('alert-container', 'Reiniciando el sistema completo... Por favor espera.', 'info');
+
+        const response = await fetch('/api/admin/full-reset', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            showAlert('alert-container',
+                '✅ Sistema reiniciado exitosamente. Usuarios, soluciones y ranking eliminados. ' +
+                'Instancia Berlin52 configurada por defecto.<br>' +
+                `Backup de seguridad creado: <strong>${data.safetyBackup}</strong><br><br>` +
+                '<strong>IMPORTANTE:</strong> Recarga la página para ver los cambios.',
+                'success');
+
+            setTimeout(() => {
+                if (confirm('¿Quieres recargar la página ahora para ver los cambios?')) {
+                    window.location.reload();
+                }
+            }, 2000);
+        } else {
+            showAlert('alert-container', data.error || 'Error al reiniciar el sistema', 'danger');
+        }
+    } catch (error) {
+        console.error('Full system reset error:', error);
+        showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
+    } finally {
+        setLoading(resetBtn, false);
+    }
+}
