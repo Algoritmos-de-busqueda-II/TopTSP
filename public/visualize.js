@@ -3,6 +3,11 @@ let svg = null;
 let g = null;
 let zoom = null;
 let userRoute = null; // Store the user's solution route
+let instanceCoordinates = []; // Parsed instance coordinates (reused when switching solutions)
+let currentUserId = null;
+let bestSolutionData = null; // Response of /api/user-solution (user's best solution)
+let userSubmissions = []; // Chronological list of the user's submissions
+let viewingSolutionId = null; // Solution currently drawn on the canvas
 
 document.addEventListener('DOMContentLoaded', async function() {
     svg = d3.select("#tsp-canvas");
@@ -155,33 +160,34 @@ async function loadAndVisualizeUserSolution(userId) {
 
         const solutionData = await solutionResponse.json();
         userRoute = solutionData.route;
+        currentUserId = userId;
+        bestSolutionData = solutionData;
+        viewingSolutionId = solutionData.solutionId || null;
 
         // Additionally, fetch user's submissions history to render progression chart
         try {
             const subsResp = await fetch(`/api/user-submissions/${userId}`);
             if (subsResp.ok) {
                 const subsData = await subsResp.json();
-                        if (subsData && Array.isArray(subsData.submissions) && subsData.submissions.length > 0) {
-                            await renderProgressionChart(subsData.submissions, solutionData.email);
-                        }
+                if (subsData && Array.isArray(subsData.submissions) && subsData.submissions.length > 0) {
+                    userSubmissions = subsData.submissions;
+                    renderSubmissionsTable();
+                    await renderProgressionChart(subsData.submissions, solutionData.email);
+                }
             }
         } catch (e) {
             console.error('Error fetching user submissions:', e);
         }
 
         // Update display info
-        const displayEmail = solutionData.email.split('@')[0];
         document.getElementById('instance-name-display').textContent = solutionData.instanceName || tspData.name || 'Sin nombre';
-        // Show method in the middle column instead of 'Número de Ciudades'
-        document.getElementById('dimension-display').textContent = solutionData.method || '';
-        document.getElementById('type-display').textContent = solutionData.objectiveValue.toFixed(2);
-        document.getElementById('type-label').textContent = 'F.O.';
         // Change the center label to 'Método'
         const middleLabel = document.querySelectorAll('.visualization-info .grid .text-center p strong')[1];
         if (middleLabel) {
             middleLabel.textContent = 'Método';
         }
-        document.getElementById('instance-title').textContent = `Solución de ${displayEmail}`;
+        document.getElementById('type-label').textContent = 'F.O.';
+        updateSolutionHeader(solutionData.method, solutionData.objectiveValue, null);
 
         // Parse coordinates
         let coordinates = [];
@@ -195,6 +201,7 @@ async function loadAndVisualizeUserSolution(userId) {
         if (coordinates.length === 0) {
             throw new Error('No se encontraron coordenadas para visualizar');
         }
+        instanceCoordinates = coordinates;
 
         // Show visualization
         loadingMessage.classList.add('hidden');
@@ -207,6 +214,116 @@ async function loadAndVisualizeUserSolution(userId) {
         console.error('Error loading user solution:', error);
         loadingMessage.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
     }
+}
+
+// Parse SQLite 'YYYY-MM-DD HH:MM:SS' timestamps (stored in UTC, without timezone) as UTC
+function parseUtcTimestamp(value) {
+    if (!value) return null;
+    const str = String(value).trim();
+    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+        return new Date(str.replace(' ', 'T') + 'Z');
+    }
+    return new Date(str);
+}
+
+// Update title and info row for the solution currently displayed.
+// submissionNumber === null means the user's best solution is shown.
+function updateSolutionHeader(method, objectiveValue, submissionNumber) {
+    const displayEmail = bestSolutionData ? bestSolutionData.email.split('@')[0] : '';
+    const title = submissionNumber === null
+        ? `Mejor solución de ${displayEmail}`
+        : `Solución del envío #${submissionNumber} de ${displayEmail}`;
+    document.getElementById('instance-title').textContent = title;
+    document.getElementById('dimension-display').textContent = method || '';
+    document.getElementById('type-display').textContent = Number(objectiveValue).toFixed(2);
+
+    const backBtn = document.getElementById('back-to-best-btn');
+    if (backBtn) {
+        backBtn.classList.toggle('hidden', submissionNumber === null);
+    }
+}
+
+function renderSubmissionsTable() {
+    const card = document.getElementById('submissions-card');
+    const tbody = document.getElementById('submissions-tbody');
+    if (!card || !tbody) return;
+
+    const bestId = bestSolutionData ? bestSolutionData.solutionId : null;
+    tbody.innerHTML = '';
+
+    userSubmissions.forEach((sub, index) => {
+        const row = document.createElement('tr');
+        if (sub.id !== undefined && sub.id === bestId) {
+            row.classList.add('best-submission');
+        }
+        if (sub.id !== undefined && sub.id === viewingSolutionId) {
+            row.classList.add('viewing-submission');
+        }
+
+        const date = parseUtcTimestamp(sub.submitted_at);
+        row.innerHTML = `
+            <td><strong>#${index + 1}</strong></td>
+            <td><strong>${formatObjectiveValue(sub.objective_value)}</strong></td>
+            <td></td>
+            <td>${date && !isNaN(date.getTime()) ? formatDate(date) : '-'}</td>
+            <td></td>
+        `;
+        row.children[2].textContent = sub.method || '-';
+
+        if (sub.id !== undefined) {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-secondary btn-sm';
+            btn.title = 'Visualizar esta solución';
+            btn.textContent = '👁️';
+            btn.addEventListener('click', () => showSubmission(sub.id));
+            row.lastElementChild.appendChild(btn);
+        }
+
+        tbody.appendChild(row);
+    });
+
+    card.classList.remove('hidden');
+}
+
+async function showSubmission(solutionId) {
+    if (!currentUserId) return;
+
+    if (bestSolutionData && solutionId === bestSolutionData.solutionId) {
+        showBestSolution();
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/user-submission/${currentUserId}/${solutionId}`);
+        if (!response.ok) {
+            throw new Error('No se pudo cargar la solución seleccionada');
+        }
+        const data = await response.json();
+        const index = userSubmissions.findIndex(s => s.id === solutionId);
+
+        userRoute = data.route;
+        viewingSolutionId = solutionId;
+        updateSolutionHeader(data.method, data.objectiveValue, index + 1);
+        redrawCurrentSolution();
+    } catch (error) {
+        console.error('Error loading submission:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+function showBestSolution() {
+    if (!bestSolutionData) return;
+    userRoute = bestSolutionData.route;
+    viewingSolutionId = bestSolutionData.solutionId || null;
+    updateSolutionHeader(bestSolutionData.method, bestSolutionData.objectiveValue, null);
+    redrawCurrentSolution();
+}
+
+function redrawCurrentSolution() {
+    renderTSPInstance(instanceCoordinates);
+    toggleLabels();
+    renderSubmissionsTable();
+    document.getElementById('instance-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function renderProgressionChart(submissions, email) {
@@ -503,7 +620,8 @@ function renderTSPInstance(coordinates) {
         .style("fill", "#333")
         .style("pointer-events", "none");
 
-    // Create tooltip
+    // Create tooltip (remove any previous one when re-rendering)
+    d3.select("#tooltip").remove();
     const tooltip = d3.select("body").append("div")
         .attr("id", "tooltip")
         .style("position", "absolute")

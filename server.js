@@ -1075,7 +1075,7 @@ app.get('/api/user-solution/:userId', (req, res) => {
 
     // Get user's best solution including the route and method
     db.get(`
-        SELECT s.solution, s.method AS method, ubs.best_objective_value, u.email
+        SELECT s.id AS solution_id, s.solution, s.method AS method, ubs.best_objective_value, u.email
         FROM user_best_solutions ubs
         JOIN solutions s ON ubs.best_solution_id = s.id
         JOIN users u ON ubs.user_id = u.id
@@ -1110,7 +1110,8 @@ app.get('/api/user-solution/:userId', (req, res) => {
                 method: result.method || '',
                 objectiveValue: result.best_objective_value,
                 email: result.email,
-                instanceName: instanceName
+                instanceName: instanceName,
+                solutionId: result.solution_id
             });
         });
     });
@@ -1122,10 +1123,10 @@ app.get('/api/user-submissions/:userId', (req, res) => {
     const db = getDatabase();
 
     db.all(`
-        SELECT objective_value, method, submitted_at
+        SELECT id, objective_value, method, submitted_at
         FROM solutions
         WHERE user_id = ?
-        ORDER BY submitted_at ASC
+        ORDER BY submitted_at ASC, id ASC
         LIMIT 200
     `, [userId], (err, rows) => {
         db.close();
@@ -1136,12 +1137,58 @@ app.get('/api/user-submissions/:userId', (req, res) => {
 
         // Normalize rows: ensure submitted_at is ISO string
         const submissions = rows.map(r => ({
+            id: r.id,
             objective_value: r.objective_value,
             method: r.method,
             submitted_at: r.submitted_at
         }));
 
         res.json({ submissions });
+    });
+});
+
+// Get the route of a specific submission of a user (public) for visualization
+app.get('/api/user-submission/:userId/:solutionId', (req, res) => {
+    const userId = parseInt(req.params.userId);
+    const solutionId = parseInt(req.params.solutionId);
+    if (isNaN(userId) || isNaN(solutionId)) {
+        return res.status(400).json({ error: 'Invalid parameters' });
+    }
+
+    const db = getDatabase();
+
+    db.get(`
+        SELECT s.id, s.solution, s.method, s.objective_value, s.submitted_at, u.email
+        FROM solutions s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.id = ? AND s.user_id = ?
+    `, [solutionId, userId], (err, result) => {
+        db.close();
+        if (err) {
+            console.error('Error fetching user submission:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (!result) {
+            return res.status(404).json({ error: 'Solution not found' });
+        }
+
+        let route = [];
+        try {
+            route = result.solution.split(',').map(n => parseInt(n.trim()));
+        } catch (e) {
+            console.error('Error parsing solution:', e);
+            return res.status(500).json({ error: 'Invalid solution format' });
+        }
+
+        res.json({
+            solutionId: result.id,
+            route: route,
+            method: result.method || '',
+            objectiveValue: result.objective_value,
+            submittedAt: result.submitted_at,
+            email: result.email
+        });
     });
 });
 
