@@ -176,6 +176,7 @@ async function loadRanking() {
                 }
                 
                 updateStatistics(data.stats || data.ranking);
+                loadRecentSubmissions();
             } else {
                 // Hide frozen message
                 frozenMessage.classList.add('hidden');
@@ -193,6 +194,7 @@ async function loadRanking() {
                 }
                 
                 updateStatistics(data.stats || data.ranking);
+                loadRecentSubmissions();
             }
         } else {
             console.error('Error loading ranking:', response.status);
@@ -269,6 +271,57 @@ function populateRankingTable(ranking) {
 function visualizeUserSolution(userId) {
     // Open in same page instead of new tab
     window.location.href = `/visualize?userId=${userId}`;
+}
+
+async function loadRecentSubmissions() {
+    const container = document.getElementById('recent-submissions');
+    const tableWrapper = document.getElementById('recent-submissions-table');
+    const frozenText = document.getElementById('recent-submissions-frozen');
+    const tbody = document.getElementById('recent-submissions-tbody');
+    if (!container || !tableWrapper || !frozenText || !tbody) return;
+
+    try {
+        const response = await fetch('/api/recent-submissions');
+        if (!response.ok) return;
+        const data = await response.json();
+
+        if (data.frozen) {
+            tableWrapper.classList.add('hidden');
+            frozenText.classList.remove('hidden');
+            container.classList.remove('hidden');
+            return;
+        }
+
+        const submissions = Array.isArray(data.submissions) ? data.submissions : [];
+        if (submissions.length === 0) {
+            container.classList.add('hidden');
+            return;
+        }
+
+        tbody.innerHTML = '';
+        submissions.forEach(sub => {
+            // submitted_at is stored in UTC without timezone ('YYYY-MM-DD HH:MM:SS')
+            const raw = String(sub.submitted_at || '');
+            const date = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(raw)
+                ? new Date(raw.replace(' ', 'T') + 'Z')
+                : new Date(raw);
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${sanitizeHtml(sub.user || '-')}</td>
+                <td><strong>${formatObjectiveValue(sub.objective_value)}</strong></td>
+                <td>${sanitizeHtml(sub.method || '-')}</td>
+                <td>${isNaN(date.getTime()) ? '-' : formatDate(date)}</td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        frozenText.classList.add('hidden');
+        tableWrapper.classList.remove('hidden');
+        container.classList.remove('hidden');
+    } catch (error) {
+        console.error('Error loading recent submissions:', error);
+    }
 }
 
 function updateStatistics(data) {

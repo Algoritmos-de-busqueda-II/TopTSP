@@ -1147,6 +1147,49 @@ app.get('/api/user-submissions/:userId', (req, res) => {
     });
 });
 
+// Get the latest submissions of the competition (public), hidden while the ranking is frozen
+app.get('/api/recent-submissions', (req, res) => {
+    const db = getDatabase();
+
+    db.get('SELECT value FROM system_settings WHERE key = ?', ['ranking_frozen'], (err, setting) => {
+        if (err) {
+            db.close();
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (setting && setting.value === 'true') {
+            db.close();
+            return res.json({ frozen: true, submissions: [] });
+        }
+
+        db.all(`
+            SELECT s.objective_value, s.method, s.submitted_at, u.email
+            FROM solutions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.is_valid = 1
+            ORDER BY s.submitted_at DESC, s.id DESC
+            LIMIT 5
+        `, (err2, rows) => {
+            db.close();
+            if (err2) {
+                console.error('Error fetching recent submissions:', err2);
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            const submissions = rows.map(r => ({
+                user: r.email ? r.email.split('@')[0] : '',
+                objective_value: r.objective_value !== null && r.objective_value !== undefined
+                    ? Number(Number(r.objective_value).toFixed(2))
+                    : r.objective_value,
+                method: r.method || '',
+                submitted_at: r.submitted_at
+            }));
+
+            res.json({ frozen: false, submissions });
+        });
+    });
+});
+
 // Get the route of the competition's best solution (public) for visualization
 app.get('/api/competition-best-solution', (req, res) => {
     const db = getDatabase();
