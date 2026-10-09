@@ -8,6 +8,7 @@ let currentUserId = null;
 let bestSolutionData = null; // Response of /api/user-solution (user's best solution)
 let userSubmissions = []; // Chronological list of the user's submissions
 let viewingSolutionId = null; // Solution currently drawn on the canvas
+let submissionsSortBy = 'date'; // 'date' (submission order) or 'value' (best F.O. first)
 
 document.addEventListener('DOMContentLoaded', async function() {
     svg = d3.select("#tsp-canvas");
@@ -251,7 +252,18 @@ function renderSubmissionsTable() {
     const bestId = bestSolutionData ? bestSolutionData.solutionId : null;
     tbody.innerHTML = '';
 
-    userSubmissions.forEach((sub, index) => {
+    // Submission numbers always follow chronological order, whatever the sort
+    const rows = userSubmissions.map((sub, index) => ({ sub, number: index + 1 }));
+    if (submissionsSortBy === 'value') {
+        rows.sort((a, b) => Number(a.sub.objective_value) - Number(b.sub.objective_value) || a.number - b.number);
+    }
+
+    const sortBtn = document.getElementById('sort-submissions-btn');
+    if (sortBtn) {
+        sortBtn.textContent = submissionsSortBy === 'value' ? '↕️ Ordenar por envío' : '↕️ Ordenar por F.O.';
+    }
+
+    rows.forEach(({ sub, number }) => {
         const row = document.createElement('tr');
         if (sub.id !== undefined && sub.id === bestId) {
             row.classList.add('best-submission');
@@ -262,7 +274,7 @@ function renderSubmissionsTable() {
 
         const date = parseUtcTimestamp(sub.submitted_at);
         row.innerHTML = `
-            <td><strong>#${index + 1}</strong></td>
+            <td><strong>#${number}</strong></td>
             <td><strong>${formatObjectiveValue(sub.objective_value)}</strong></td>
             <td></td>
             <td>${date && !isNaN(date.getTime()) ? formatDate(date) : '-'}</td>
@@ -309,6 +321,11 @@ async function showSubmission(solutionId) {
         console.error('Error loading submission:', error);
         showToast(error.message, 'error');
     }
+}
+
+function toggleSubmissionsSort() {
+    submissionsSortBy = submissionsSortBy === 'date' ? 'value' : 'date';
+    renderSubmissionsTable();
 }
 
 function showBestSolution() {
