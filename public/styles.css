@@ -1411,10 +1411,14 @@ strong {
 
 /* Visualize: competition best solution overlay */
 .competition-best-control {
-    margin-top: 0.5rem;
+    margin-top: 1rem;
 }
 
 .competition-best-control label {
     color: var(--urjc-red);
     font-weight: 600;
+}
+
+.competition-best-info {
+    white-space: nowrap;
 }
