@@ -1408,3 +1408,13 @@ strong {
     background: rgba(76, 175, 80, 0.15);
     box-shadow: inset 4px 0 0 #4CAF50;
 }
+
+/* Visualize: competition best solution overlay */
+.competition-best-control {
+    margin-top: 0.5rem;
+}
+
+.competition-best-control label {
+    color: var(--urjc-red);
+    font-weight: 600;
+}

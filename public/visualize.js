@@ -9,6 +9,9 @@ let bestSolutionData = null; // Response of /api/user-solution (user's best solu
 let userSubmissions = []; // Chronological list of the user's submissions
 let viewingSolutionId = null; // Solution currently drawn on the canvas
 let submissionsSortBy = 'date'; // 'date' (submission order) or 'value' (best F.O. first)
+let competitionBestRoute = null; // Route of the competition's best solution (loaded on demand)
+let xScaleCurrent = null; // Scales of the last render, reused to overlay routes without re-rendering
+let yScaleCurrent = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
     svg = d3.select("#tsp-canvas");
@@ -207,6 +210,10 @@ async function loadAndVisualizeUserSolution(userId) {
         // Show visualization
         loadingMessage.classList.add('hidden');
         visualizationContainer.classList.remove('hidden');
+        const competitionBestControl = document.getElementById('competition-best-control');
+        if (competitionBestControl) {
+            competitionBestControl.classList.remove('hidden');
+        }
 
         // Render the TSP instance with the user's route
         renderTSPInstance(coordinates);
@@ -326,6 +333,58 @@ async function showSubmission(solutionId) {
 function toggleSubmissionsSort() {
     submissionsSortBy = submissionsSortBy === 'date' ? 'value' : 'date';
     renderSubmissionsTable();
+}
+
+async function toggleCompetitionBest() {
+    const checkbox = document.getElementById('show-competition-best');
+
+    if (checkbox.checked && !competitionBestRoute) {
+        try {
+            const response = await fetch('/api/competition-best-solution');
+            if (!response.ok) {
+                throw new Error('No se pudo cargar la mejor solución del concurso');
+            }
+            const data = await response.json();
+            competitionBestRoute = data.route;
+            document.getElementById('competition-best-info').textContent =
+                ` (F.O. ${Number(data.objectiveValue).toFixed(2)})`;
+        } catch (error) {
+            console.error('Error loading competition best solution:', error);
+            checkbox.checked = false;
+            showToast(error.message, 'error');
+            return;
+        }
+    }
+
+    drawCompetitionBestPath();
+}
+
+// Draw (or remove) the competition's best route in red, behind the user's route
+function drawCompetitionBestPath() {
+    if (!g) return;
+    g.select('.competition-best-path').remove();
+
+    const checkbox = document.getElementById('show-competition-best');
+    if (!checkbox || !checkbox.checked || !competitionBestRoute || !xScaleCurrent) return;
+
+    const pathData = competitionBestRoute
+        .map(cityId => instanceCoordinates.find(coord => coord.id === cityId))
+        .filter(Boolean);
+    if (pathData.length === 0) return;
+    pathData.push(pathData[0]);
+
+    const lineGenerator = d3.line()
+        .x(d => xScaleCurrent(d.x))
+        .y(d => yScaleCurrent(d.y));
+
+    g.insert('path', ':first-child')
+        .datum(pathData)
+        .attr('class', 'competition-best-path')
+        .attr('fill', 'none')
+        .attr('stroke', '#C41E3A')
+        .attr('stroke-width', 4)
+        .attr('stroke-opacity', 0.6)
+        .attr('d', lineGenerator);
 }
 
 function showBestSolution() {
@@ -565,6 +624,9 @@ function renderTSPInstance(coordinates) {
         .domain([minY, maxY])
         .range([height + padding, padding]); // Flip Y axis
 
+    xScaleCurrent = xScale;
+    yScaleCurrent = yScale;
+
     // If we have a user route, draw the path lines first (so they appear behind the cities)
     if (userRoute && userRoute.length > 0) {
         // Create a line generator
@@ -636,6 +698,9 @@ function renderTSPInstance(coordinates) {
         .style("font-weight", "bold")
         .style("fill", "#333")
         .style("pointer-events", "none");
+
+    // Overlay the competition's best route if requested
+    drawCompetitionBestPath();
 
     // Create tooltip (remove any previous one when re-rendering)
     d3.select("#tooltip").remove();

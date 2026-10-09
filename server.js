@@ -1147,6 +1147,48 @@ app.get('/api/user-submissions/:userId', (req, res) => {
     });
 });
 
+// Get the route of the competition's best solution (public) for visualization
+app.get('/api/competition-best-solution', (req, res) => {
+    const db = getDatabase();
+
+    // Same ordering as the live ranking
+    db.get(`
+        SELECT s.id, s.solution, s.method, ubs.best_objective_value, u.email
+        FROM user_best_solutions ubs
+        JOIN solutions s ON ubs.best_solution_id = s.id
+        JOIN users u ON ubs.user_id = u.id
+        WHERE ubs.best_objective_value IS NOT NULL
+        ORDER BY ROUND(CAST(ubs.best_objective_value AS REAL), 2) ASC, datetime(ubs.last_improvement) ASC
+        LIMIT 1
+    `, (err, result) => {
+        db.close();
+        if (err) {
+            console.error('Error fetching competition best solution:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (!result) {
+            return res.status(404).json({ error: 'Solution not found' });
+        }
+
+        let route = [];
+        try {
+            route = result.solution.split(',').map(n => parseInt(n.trim()));
+        } catch (e) {
+            console.error('Error parsing solution:', e);
+            return res.status(500).json({ error: 'Invalid solution format' });
+        }
+
+        res.json({
+            solutionId: result.id,
+            route: route,
+            method: result.method || '',
+            objectiveValue: result.best_objective_value,
+            email: result.email
+        });
+    });
+});
+
 // Get the route of a specific submission of a user (public) for visualization
 app.get('/api/user-submission/:userId/:solutionId', (req, res) => {
     const userId = parseInt(req.params.userId);

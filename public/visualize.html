@@ -57,6 +57,10 @@
                         <div>
                             <label for="show-labels">Mostrar Etiquetas:</label>
                             <input type="checkbox" id="show-labels" checked onchange="toggleLabels()">
+                            <div id="competition-best-control" class="competition-best-control hidden">
+                                <label for="show-competition-best">Mostrar mejor solución del concurso<span id="competition-best-info"></span>:</label>
+                                <input type="checkbox" id="show-competition-best" onchange="toggleCompetitionBest()">
+                            </div>
                         </div>
                         <div>
                             <label for="point-size">Tamaño de Puntos:</label>
