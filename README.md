@@ -178,6 +178,7 @@ topabii/
 - **Podio visual**: Destacado especial para top 3 posiciones
 - **Actualización automática** cada 30 segundos
 - **Estadísticas generales**: Participantes, mejor solución, total envíos
+- **Últimos envíos**: Tabla con los 5 envíos más recientes de la competición (oculta mientras el ranking está congelado)
 - **Botones interactivos**: Descargar instancia y visualizar TSP
 
 <img width="2320" height="1472" alt="image" src="https://github.com/user-attachments/assets/c32b2094-19dd-43a1-8db5-1b452e9f1e65" />
@@ -191,11 +192,19 @@ topabii/
 - **Controles de visualización**: Mostrar/ocultar etiquetas, ajustar tamaño de puntos
 - **Responsive**: Adaptado a diferentes tamaños de pantalla
 
+Al visualizar la solución de un usuario desde el ranking (`/visualize?userId=...`):
+
+- **Mejor solución del usuario**: Se dibuja su ruta junto con su valor de función objetivo y el método utilizado
+- **Historial de envíos**: Tabla con todos sus envíos (número de envío, valor F.O., método y fecha/hora), que se puede ordenar por orden de envío o por valor F.O.; la mejor solución se marca con ⭐
+- **Ver cualquier envío**: Al pulsar 👁️ en un envío se dibuja su ruta en el mapa (*"Solución del envío #N de ..."*) y el botón **Volver a ver la mejor** recupera la mejor solución
+- **Comparar con la mejor del concurso**: La casilla *Mostrar mejor solución del concurso* (desactivada por defecto) superpone en rojo la ruta de la mejor solución de la competición para ver las diferencias con la solución mostrada
+- **Progresión de soluciones**: Gráfico con la evolución de los envíos del usuario frente a la mejor solución de la competición
+
 <img width="1160" height="937" alt="image" src="https://github.com/user-attachments/assets/2385c9cb-8fa8-4fea-a080-43153f3e6e81" />
 <img width="2320" height="2134" alt="image" src="https://github.com/user-attachments/assets/1a4fad1c-6ff1-4165-a166-f7ee5c5d211f" />
 
-  
-- ## API Endpoints
+
+## API Endpoints
 
 ### Autenticación
 - `POST /api/login` - Iniciar sesión
@@ -218,6 +227,12 @@ topabii/
 - `GET /api/current-instance` - Verificar si existe instancia
 - `GET /api/current-instance-coords` - Obtener coordenadas para visualización
 - `GET /api/download-instance` - Descargar instancia en formato TSPLIB
+- `GET /api/user-solution/:userId` - Mejor solución (ruta) de un usuario
+- `GET /api/user-submissions/:userId` - Historial de envíos de un usuario
+- `GET /api/user-submission/:userId/:solutionId` - Ruta de un envío concreto de un usuario
+- `GET /api/competition-best-solution` - Ruta de la mejor solución de la competición
+- `GET /api/competition-best-history` - Historial de mejoras de la mejor solución de la competición
+- `GET /api/recent-submissions` - Últimos 5 envíos de la competición (vacío si el ranking está congelado)
 
 ## Validaciones Implementadas
 
