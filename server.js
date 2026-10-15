@@ -468,7 +468,7 @@ app.post('/api/admin/full-reset', requireAdmin, (req, res) => {
 
 // Submit solution endpoint
 app.post('/api/submit-solution', requireAuth, (req, res) => {
-    const { solution, method, time } = req.body;
+    const { solution, method, methodDescription, time } = req.body;
     
     if (!solution) {
         return res.status(400).json({ error: 'Solution required' });
@@ -543,8 +543,9 @@ app.post('/api/submit-solution', requireAuth, (req, res) => {
             
             // Insert solution
             const methodValue = method && method.length <= 10 ? method.trim() : '';
-            db.run('INSERT INTO solutions (user_id, tsp_instance_id, solution, objective_value, is_valid, method, time_seconds) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [req.session.user.id, tspInstanceId, solution, objectiveValue, true, methodValue, timeSeconds], function(err) {
+            const methodDescriptionValue = typeof methodDescription === 'string' ? methodDescription.trim().slice(0, 200) : '';
+            db.run('INSERT INTO solutions (user_id, tsp_instance_id, solution, objective_value, is_valid, method, method_description, time_seconds) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [req.session.user.id, tspInstanceId, solution, objectiveValue, true, methodValue, methodDescriptionValue, timeSeconds], function(err) {
                 if (err) {
                     db.close();
                     return res.status(500).json({ error: 'Error saving solution' });
@@ -630,11 +631,13 @@ app.get('/api/ranking', (req, res) => {
                 u.email,
                 ubs.best_objective_value,
                 ubs.best_method,
+                bs.method_description AS best_method_description,
                 ubs.best_time_seconds,
                 ubs.last_improvement,
                 ubs.total_submissions
             FROM user_best_solutions ubs
             JOIN users u ON ubs.user_id = u.id
+            LEFT JOIN solutions bs ON bs.id = ubs.best_solution_id
             WHERE ubs.best_objective_value IS NOT NULL
             -- Ensure numeric ordering for objective (rounded to 2 decimals to avoid floating precision issues)
             -- and chronological ordering for timestamps (older first)
@@ -946,6 +949,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
             s.solution,
             s.objective_value,
             s.method,
+            s.method_description,
             s.time_seconds,
             s.submitted_at,
             s.is_valid
@@ -965,6 +969,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
                 { id: 'solution', title: 'Solution' },
                 { id: 'objective_value', title: 'Función Objetivo' },
                 { id: 'method', title: 'Method' },
+                { id: 'method_description', title: 'Method Description' },
                 { id: 'time_seconds', title: 'Time (s)' },
                 { id: 'submitted_at', title: 'Submitted At' },
                 { id: 'is_valid', title: 'Valid' }
@@ -1006,11 +1011,13 @@ const LIVE_RANKING_SQL = `
         u.email,
         ubs.best_objective_value,
         ubs.best_method,
+        bs.method_description AS best_method_description,
         ubs.best_time_seconds,
         ubs.last_improvement,
         ubs.total_submissions
     FROM user_best_solutions ubs
     JOIN users u ON ubs.user_id = u.id
+    LEFT JOIN solutions bs ON bs.id = ubs.best_solution_id
     WHERE ubs.best_objective_value IS NOT NULL AND u.is_admin = 0
     ORDER BY ROUND(CAST(ubs.best_objective_value AS REAL), 2) ASC, datetime(ubs.last_improvement) ASC
 `;
@@ -1043,6 +1050,7 @@ app.get('/api/admin/ranking-report', requireAdmin, async (req, res) => {
             user: r.email ? r.email.split('@')[0] : '',
             best_objective_value: Number(Number(r.best_objective_value).toFixed(2)),
             best_method: r.best_method || '',
+            best_method_description: r.best_method_description || '',
             best_time_seconds: r.best_time_seconds,
             last_improvement: r.last_improvement,
             total_submissions: r.total_submissions || 0
@@ -1089,7 +1097,7 @@ app.get('/api/admin/ranking-report', requireAdmin, async (req, res) => {
         }
 
         const best = await dbGet(db, `
-            SELECT s.solution, s.method, s.time_seconds, ubs.best_objective_value, u.email
+            SELECT s.solution, s.method, s.method_description, s.time_seconds, ubs.best_objective_value, u.email
             FROM user_best_solutions ubs
             JOIN solutions s ON ubs.best_solution_id = s.id
             JOIN users u ON ubs.user_id = u.id
@@ -1103,6 +1111,7 @@ app.get('/api/admin/ranking-report', requireAdmin, async (req, res) => {
             bestSolution = {
                 route: String(best.solution || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)),
                 method: best.method || '',
+                methodDescription: best.method_description || '',
                 timeSeconds: best.time_seconds,
                 objectiveValue: Number(Number(best.best_objective_value).toFixed(2)),
                 user: best.email ? best.email.split('@')[0] : ''
@@ -1169,10 +1178,10 @@ async function archiveCurrentCompetition(db) {
             const value = round2(r.best_objective_value);
             const deviation = best > 0 ? ((value - best) / best) * 100 : 0;
             await dbRun(db, `INSERT INTO competition_results
-                (competition_id, user_id, email, position, objective_value, deviation, method, time_seconds, total_submissions, last_improvement)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                (competition_id, user_id, email, position, objective_value, deviation, method, method_description, time_seconds, total_submissions, last_improvement)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [competitionId, r.user_id, r.email, i + 1, value, Number(deviation.toFixed(4)),
-                 r.best_method || '', r.best_time_seconds, r.total_submissions || 0, r.last_improvement]);
+                 r.best_method || '', r.best_method_description || '', r.best_time_seconds, r.total_submissions || 0, r.last_improvement]);
         }
 
         await dbRun(db, 'COMMIT');
@@ -1305,7 +1314,7 @@ app.get('/api/admin/export-ranking-csv', requireAdmin, (req, res) => {
         };
 
         const best = rows.length > 0 ? Number(rows[0].best_objective_value) : null;
-        const lines = [['Posicion', 'Usuario', 'Email', 'Funcion Objetivo', 'Gap (%)', 'Metodo', 'Envios', 'Tiempo (s)', 'Ultima Mejora'].join(',')];
+        const lines = [['Posicion', 'Usuario', 'Email', 'Funcion Objetivo', 'Gap (%)', 'Metodo', 'Descripcion Metodo', 'Envios', 'Tiempo (s)', 'Ultima Mejora'].join(',')];
         rows.forEach((r, index) => {
             const value = Number(r.best_objective_value);
             const gap = best ? ((value - best) / best) * 100 : 0;
@@ -1316,6 +1325,7 @@ app.get('/api/admin/export-ranking-csv', requireAdmin, (req, res) => {
                 value.toFixed(2),
                 gap.toFixed(2),
                 r.best_method || '',
+                r.best_method_description || '',
                 r.total_submissions || 0,
                 r.best_time_seconds === null || r.best_time_seconds === undefined ? '' : r.best_time_seconds,
                 r.last_improvement || ''
@@ -1398,6 +1408,7 @@ app.get('/api/user/solutions', requireAuth, (req, res) => {
             s.solution,
             s.objective_value,
             s.method,
+            s.method_description,
             s.time_seconds,
             s.is_valid,
             s.submitted_at
@@ -1492,7 +1503,7 @@ app.get('/api/user-solution/:userId', (req, res) => {
 
     // Get user's best solution including the route and method
     db.get(`
-        SELECT s.id AS solution_id, s.solution, s.method AS method, s.time_seconds, ubs.best_objective_value, u.email
+        SELECT s.id AS solution_id, s.solution, s.method AS method, s.method_description, s.time_seconds, ubs.best_objective_value, u.email
         FROM user_best_solutions ubs
         JOIN solutions s ON ubs.best_solution_id = s.id
         JOIN users u ON ubs.user_id = u.id
@@ -1525,6 +1536,7 @@ app.get('/api/user-solution/:userId', (req, res) => {
             res.json({
                 route: route,
                 method: result.method || '',
+                methodDescription: result.method_description || '',
                 timeSeconds: result.time_seconds,
                 objectiveValue: result.best_objective_value,
                 email: result.email,
@@ -1541,7 +1553,7 @@ app.get('/api/user-submissions/:userId', (req, res) => {
     const db = getDatabase();
 
     db.all(`
-        SELECT id, objective_value, method, time_seconds, submitted_at
+        SELECT id, objective_value, method, method_description, time_seconds, submitted_at
         FROM solutions
         WHERE user_id = ?
         ORDER BY submitted_at ASC, id ASC
@@ -1558,6 +1570,7 @@ app.get('/api/user-submissions/:userId', (req, res) => {
             id: r.id,
             objective_value: r.objective_value,
             method: r.method,
+            method_description: r.method_description || '',
             time_seconds: r.time_seconds,
             submitted_at: r.submitted_at
         }));
@@ -1582,7 +1595,7 @@ app.get('/api/recent-submissions', (req, res) => {
         }
 
         db.all(`
-            SELECT s.objective_value, s.method, s.time_seconds, s.submitted_at, u.email
+            SELECT s.objective_value, s.method, s.method_description, s.time_seconds, s.submitted_at, u.email
             FROM solutions s
             JOIN users u ON s.user_id = u.id
             WHERE s.is_valid = 1
@@ -1601,6 +1614,7 @@ app.get('/api/recent-submissions', (req, res) => {
                     ? Number(Number(r.objective_value).toFixed(2))
                     : r.objective_value,
                 method: r.method || '',
+                method_description: r.method_description || '',
                 time_seconds: r.time_seconds,
                 submitted_at: r.submitted_at
             }));
@@ -1663,7 +1677,7 @@ app.get('/api/user-submission/:userId/:solutionId', (req, res) => {
     const db = getDatabase();
 
     db.get(`
-        SELECT s.id, s.solution, s.method, s.time_seconds, s.objective_value, s.submitted_at, u.email
+        SELECT s.id, s.solution, s.method, s.method_description, s.time_seconds, s.objective_value, s.submitted_at, u.email
         FROM solutions s
         JOIN users u ON s.user_id = u.id
         WHERE s.id = ? AND s.user_id = ?
@@ -1690,6 +1704,7 @@ app.get('/api/user-submission/:userId/:solutionId', (req, res) => {
             solutionId: result.id,
             route: route,
             method: result.method || '',
+            methodDescription: result.method_description || '',
             objectiveValue: result.objective_value,
             timeSeconds: result.time_seconds,
             submittedAt: result.submitted_at,
@@ -1779,11 +1794,13 @@ function saveRankingSnapshot(callback) {
             u.email,
             ubs.best_objective_value,
             ubs.best_method,
+            bs.method_description AS best_method_description,
             ubs.best_time_seconds,
             ubs.last_improvement,
             ubs.total_submissions
         FROM user_best_solutions ubs
         JOIN users u ON ubs.user_id = u.id
+        LEFT JOIN solutions bs ON bs.id = ubs.best_solution_id
         WHERE ubs.best_objective_value IS NOT NULL
     -- Keep same ordering as live ranking: objective asc (rounded to 2 decimals), older timestamps first
     ORDER BY ROUND(CAST(ubs.best_objective_value AS REAL), 2) ASC, datetime(ubs.last_improvement) ASC

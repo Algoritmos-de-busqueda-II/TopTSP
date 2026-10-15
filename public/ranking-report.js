@@ -169,6 +169,7 @@ function renderReport(data) {
                     <dt>Usuario</dt><dd>${escapeHtml(data.bestSolution.user)}</dd>
                     <dt>Función objetivo</dt><dd>${fmtNum(data.bestSolution.objectiveValue)}</dd>
                     <dt>Método</dt><dd>${escapeHtml(data.bestSolution.method || '-')}</dd>
+                    ${data.bestSolution.methodDescription ? `<dt>Descripción</dt><dd>${escapeHtml(data.bestSolution.methodDescription)}</dd>` : ''}
                     <dt>Tiempo</dt><dd>${fmtTime(data.bestSolution.timeSeconds)}</dd>
                 </dl>` : ''}
             </div>
@@ -184,7 +185,7 @@ function renderReport(data) {
 
     // Full ranking
     html += `
-        <h2>Clasificación</h2>
+        <h2>Clasificación final</h2>
         <table>
             <thead>
                 <tr>

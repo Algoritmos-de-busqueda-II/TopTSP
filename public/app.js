@@ -85,6 +85,17 @@ function formatObjectiveValue(value) {
     return Number(value).toFixed(2);
 }
 
+// Method acronym shown in tables; its optional description appears on hover
+function formatMethod(method, description) {
+    const escape = text => String(text === null || text === undefined ? '' : text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    if (!method) return description ? `<span class="method-acronym" title="${escape(description)}">-</span>` : '-';
+    return description
+        ? `<span class="method-acronym" title="${escape(description)}">${escape(method)}</span>`
+        : escape(method);
+}
+
 // Optional solving time (seconds) reported by the student: "12.5 s", "3 min 20 s", "1 h 05 min"
 function formatTime(seconds) {
     if (seconds === null || seconds === undefined || seconds === '' || isNaN(Number(seconds))) return '-';

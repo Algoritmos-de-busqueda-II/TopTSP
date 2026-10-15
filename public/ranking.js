@@ -267,7 +267,7 @@ function populateRankingTable(ranking) {
             </td>
             <td>${sanitizeHtml(displayEmail)}</td>
             <td><strong>${formatObjectiveValue(entry.best_objective_value)}</strong></td>
-            <td>${sanitizeHtml(entry.best_method || '-')}</td>
+            <td>${formatMethod(entry.best_method, entry.best_method_description)}</td>
             <td>${formatDate(entry.last_improvement)}</td>
             <td>${entry.total_submissions || 0}</td>
             <td>${formatTime(entry.best_time_seconds)}</td>
@@ -324,7 +324,7 @@ async function loadRecentSubmissions() {
             row.innerHTML = `
                 <td>${sanitizeHtml(sub.user || '-')}</td>
                 <td><strong>${formatObjectiveValue(sub.objective_value)}</strong></td>
-                <td>${sanitizeHtml(sub.method || '-')}</td>
+                <td>${formatMethod(sub.method, sub.method_description)}</td>
                 <td>${formatTime(sub.time_seconds)}</td>
                 <td>${isNaN(date.getTime()) ? '-' : formatDate(date)}</td>
             `;
@@ -487,17 +487,17 @@ function positionBadge(position, competition) {
 function renderOptimumsTable(players) {
     const tbody = document.getElementById('optimums-tbody');
     const sorted = players.slice().sort((a, b) =>
-        b.optimums - a.optimums || b.participations - a.participations ||
-        a.avgDeviation - b.avgDeviation || a.user.localeCompare(b.user));
-    const ranks = sharedRanks(sorted, p => [p.optimums, p.participations, p.avgDeviation.toFixed(2)].join('|'));
+        Number(a.avgDeviation.toFixed(2)) - Number(b.avgDeviation.toFixed(2)) ||
+        b.optimums - a.optimums || b.participations - a.participations || a.user.localeCompare(b.user));
+    const ranks = sharedRanks(sorted, p => [p.avgDeviation.toFixed(2), p.optimums, p.participations].join('|'));
 
     tbody.innerHTML = sorted.map((p, i) => `
         <tr class="${isOwnPlayer(p) ? 'own-row' : ''}">
             <td><strong>${ranks[i]}</strong></td>
             <td>${sanitizeHtml(p.user)}</td>
-            <td class="text-center"><strong>${p.optimums}</strong></td>
+            <td class="text-center"><strong>${p.avgDeviation.toFixed(2)}%</strong></td>
+            <td class="text-center">${p.optimums}</td>
             <td class="text-center">${p.participations}</td>
-            <td class="text-center">${p.avgDeviation.toFixed(2)}%</td>
         </tr>
     `).join('');
 }

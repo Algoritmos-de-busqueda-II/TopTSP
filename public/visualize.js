@@ -191,7 +191,7 @@ async function loadAndVisualizeUserSolution(userId) {
             middleLabel.textContent = 'Método';
         }
         document.getElementById('type-label').textContent = 'F.O.';
-        updateSolutionHeader(solutionData.method, solutionData.objectiveValue, null);
+        updateSolutionHeader(solutionData.method, solutionData.objectiveValue, null, solutionData.methodDescription);
 
         // Parse coordinates
         let coordinates = [];
@@ -236,13 +236,20 @@ function parseUtcTimestamp(value) {
 
 // Update title and info row for the solution currently displayed.
 // submissionNumber === null means the user's best solution is shown.
-function updateSolutionHeader(method, objectiveValue, submissionNumber) {
+function updateSolutionHeader(method, objectiveValue, submissionNumber, methodDescription) {
     const displayEmail = bestSolutionData ? bestSolutionData.email.split('@')[0] : '';
     const title = submissionNumber === null
         ? `Mejor solución de ${displayEmail}`
         : `Solución del envío #${submissionNumber} de ${displayEmail}`;
     document.getElementById('instance-title').textContent = title;
-    document.getElementById('dimension-display').textContent = method || '';
+    const methodDisplay = document.getElementById('dimension-display');
+    methodDisplay.textContent = method || '';
+    if (methodDescription) {
+        const description = document.createElement('div');
+        description.className = 'method-description';
+        description.textContent = methodDescription;
+        methodDisplay.appendChild(description);
+    }
     document.getElementById('type-display').textContent = Number(objectiveValue).toFixed(2);
 
     const backBtn = document.getElementById('back-to-best-btn');
@@ -288,7 +295,7 @@ function renderSubmissionsTable() {
             <td>${date && !isNaN(date.getTime()) ? formatDate(date) : '-'}</td>
             <td></td>
         `;
-        row.children[2].textContent = sub.method || '-';
+        row.children[2].innerHTML = formatMethod(sub.method, sub.method_description);
 
         if (sub.id !== undefined) {
             const btn = document.createElement('button');
@@ -323,7 +330,7 @@ async function showSubmission(solutionId) {
 
         userRoute = data.route;
         viewingSolutionId = solutionId;
-        updateSolutionHeader(data.method, data.objectiveValue, index + 1);
+        updateSolutionHeader(data.method, data.objectiveValue, index + 1, data.methodDescription);
         redrawCurrentSolution();
     } catch (error) {
         console.error('Error loading submission:', error);
@@ -392,7 +399,7 @@ function showBestSolution() {
     if (!bestSolutionData) return;
     userRoute = bestSolutionData.route;
     viewingSolutionId = bestSolutionData.solutionId || null;
-    updateSolutionHeader(bestSolutionData.method, bestSolutionData.objectiveValue, null);
+    updateSolutionHeader(bestSolutionData.method, bestSolutionData.objectiveValue, null, bestSolutionData.methodDescription);
     redrawCurrentSolution();
 }
 

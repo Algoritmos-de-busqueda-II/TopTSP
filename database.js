@@ -138,6 +138,19 @@ function initializeDatabase() {
                 last_improvement TEXT,
                 FOREIGN KEY (competition_id) REFERENCES competition_history (id)
             )`);
+
+            // Optional long description of the method (the method field itself is a short acronym)
+            db.run(`ALTER TABLE solutions ADD COLUMN method_description TEXT DEFAULT ''`, (err) => {
+                if (err && !err.message.includes('duplicate column name')) {
+                    console.error('Error adding method_description column:', err);
+                }
+            });
+
+            db.run(`ALTER TABLE competition_results ADD COLUMN method_description TEXT DEFAULT ''`, (err) => {
+                if (err && !err.message.includes('duplicate column name')) {
+                    console.error('Error adding competition_results.method_description column:', err);
+                }
+            });
         });
 
         db.close((err) => {

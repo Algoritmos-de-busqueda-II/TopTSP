@@ -88,10 +88,16 @@
                         <small>Introduce los números de los nodos separados por comas</small>
                     </div>
                     <div class="form-group">
-                        <label for="method">Método (opcional):</label>
+                        <label for="method">Método, acrónimo (opcional):</label>
                         <input type="text" id="method" name="method" class="form-control"
                                placeholder="Ej: GA, SA, ACO" maxlength="10">
-                        <small>Máximo 10 caracteres. Describe el método o algoritmo utilizado</small>
+                        <small>Máximo 10 caracteres. Es lo que se muestra en el ranking</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="method-description">Descripción del método (opcional):</label>
+                        <input type="text" id="method-description" name="methodDescription" class="form-control"
+                               placeholder="Ej: Algoritmo genético con cruce OX y mutación 2-opt" maxlength="200">
+                        <small>Máximo 200 caracteres. Se muestra al pasar el ratón por encima del acrónimo y al visualizar la solución</small>
                     </div>
                     <div class="form-group">
                         <label for="time">Tiempo en segundos (opcional):</label>

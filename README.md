@@ -142,8 +142,8 @@ topabii/
 3. **Control del Ranking**
    - Congelar/descongelar visualización del ranking
    - Las soluciones siguen procesándose en segundo plano
-   - **Imprimir Ranking (PDF)**: abre un informe A4 con estadísticas (mejor solución, participación, envíos, media, mediana, gaps...), la ruta de la mejor solución, el progreso de la mejor solución, los envíos por día, la clasificación completa y el historial de récords. Se guarda como PDF desde el diálogo de impresión
-   - **Exportar Ranking CSV**: posición, usuario, email, función objetivo, gap, método, envíos, tiempo y última mejora
+   - **Imprimir Ranking (PDF)**: abre un informe A4 con estadísticas (mejor solución, participación, envíos, media, mediana, gaps...), la ruta de la mejor solución, el progreso de la mejor solución, los envíos por día, la clasificación final y el historial de récords. Se guarda como PDF desde el diálogo de impresión
+   - **Exportar Ranking CSV**: posición, usuario, email, función objetivo, gap, método, descripción del método, envíos, tiempo y última mejora
    - El informe y el CSV usan siempre los datos actuales (aunque el ranking esté congelado) y excluyen a los administradores
 
 <img width="900" alt="Control de ranking y exportación de datos" src="docs/images/admin-ranking.png" />
@@ -153,7 +153,7 @@ topabii/
 
 4. **Exportar Datos**
    - Descargar CSV con todas las soluciones
-   - Incluye: usuario, solución, valor objetivo, método, tiempo, fecha/hora, validez
+   - Incluye: usuario, solución, valor objetivo, método, descripción del método, tiempo, fecha/hora, validez
 
 
 5. **Configuración de la Competición**
@@ -195,6 +195,7 @@ topabii/
    - Validación automática de formato
    - Cálculo automático del valor objetivo
    - Solo se guarda la mejor solución de cada usuario
+   - **Método (opcional)**: acrónimo de hasta 10 caracteres (p. ej. `GA`), que es lo que se muestra en las tablas, y una **descripción** opcional de hasta 200 caracteres que aparece al pasar el ratón sobre el acrónimo y al visualizar la solución
    - **Tiempo (opcional)**: segundos que ha tardado el algoritmo en obtener la solución. Es solo informativo, no afecta al ranking
 
 2. **Ver Estadísticas Personales**
@@ -217,6 +218,7 @@ topabii/
 - **Podio visual**: Destacado especial para top 3 posiciones
 - **Tu posición**: si has iniciado sesión, tu fila aparece sombreada en rojo
 - **Tiempo**: columna con el tiempo de la mejor solución de cada participante
+- **Método**: se muestra el acrónimo; al pasar el ratón por encima aparece su descripción
 - **Actualización automática** cada 30 segundos
 - **Estadísticas generales**: Participantes, mejor solución, total envíos
 - **Últimos envíos**: Tabla con los 5 envíos más recientes de la competición (oculta mientras el ranking está congelado)
@@ -230,7 +232,7 @@ topabii/
 Cada vez que el administrador carga una nueva instancia, las posiciones finales de la competición anterior se guardan y pasan a la Clasificación General (`/ranking#general`), que muestra:
 
 - **Medallero**: ordenado por oros, platas y bronces (los puestos son los del ranking: a igual valor, queda delante quien lo consiguió antes). Incluye el número de competiciones, el puesto medio y las **últimas clasificaciones** como `[1][7][3][–]`, con colores oro, plata y bronce
-- **Clasificación de Óptimos**: un óptimo es igualar la mejor solución de una competición (varios participantes pueden lograrlo en la misma). Ordenada por número de óptimos; en caso de empate, por número de competiciones disputadas y, después, por la desviación promedio respecto a la mejor solución de cada competición
+- **Clasificación de Óptimos**: ordenada por la desviación promedio respecto a la mejor solución de cada competición; en caso de empate, por número de óptimos (veces que se iguala la mejor solución de una competición; varios participantes pueden lograrlo en la misma) y, después, por número de competiciones disputadas
 - **Competiciones disputadas**: instancia, fecha, participantes, mejor solución y ganador
 
 El puesto medio y la desviación promedio se calculan sobre las competiciones en las que ha participado cada alumno.
@@ -280,7 +282,7 @@ Al visualizar la solución de un usuario desde el ranking (`/visualize?userId=..
 - `GET /api/admin/current-tsp` - Obtener instancia TSP actual (admin)
 
 ### Usuario
-- `POST /api/submit-solution` - Enviar solución TSP (`solution`, `method` y `time` opcionales)
+- `POST /api/submit-solution` - Enviar solución TSP (`solution`; opcionales `method`, `methodDescription` y `time`)
 - `GET /api/ranking` - Obtener ranking actual
 
 ### Público

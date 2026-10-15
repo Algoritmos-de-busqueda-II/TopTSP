@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         const formData = new FormData(solutionForm);
         const solution = formData.get('solution').trim();
         const method = formData.get('method').trim();
+        const methodDescription = (formData.get('methodDescription') || '').trim();
         const time = (formData.get('time') || '').trim();
         
         if (!solution) {
@@ -55,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ solution, method, time })
+                body: JSON.stringify({ solution, method, methodDescription, time })
             });
             
             const data = await response.json();
@@ -208,7 +209,7 @@ async function loadSolutionHistory() {
                     row.innerHTML = `
                         <td>${solution.solution}</td>
                         <td><strong>${formatObjectiveValue(solution.objective_value)}</strong></td>
-                        <td>${solution.method || '-'}</td>
+                        <td>${formatMethod(solution.method, solution.method_description)}</td>
                         <td>${formatTime(solution.time_seconds)}</td>
                         <td>
                             <span class="status-indicator ${solution.is_valid ? 'status-online' : 'status-offline'}"></span>

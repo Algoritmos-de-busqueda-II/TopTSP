@@ -1540,3 +1540,15 @@ strong {
     border: 1px dashed #ced4da;
     color: #adb5bd;
 }
+
+/* Method acronym with its description on hover */
+.method-acronym {
+    border-bottom: 1px dotted currentColor;
+    cursor: help;
+}
+
+.method-description {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
