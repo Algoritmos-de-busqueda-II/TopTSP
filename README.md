@@ -18,6 +18,7 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
     * [Para Administradores](#para-administradores)
     * [Para Usuarios](#para-usuarios)
     * [Ranking Público](#ranking-público)
+    * [Clasificación General](#clasificación-general)
     * [Visualización TSP](#visualización-tsp)
 7.  [API Endpoints](#api-endpoints)
 8.  [Validaciones Implementadas](#validaciones-implementadas)
@@ -26,6 +27,7 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 11. [Base de Datos](#base-de-datos)
 12. [Ejemplo de Uso](#ejemplo-de-uso)
 13. [Soporte y Mantenimiento](#soporte-y-mantenimiento)
+    * [Actualizar un servidor en producción](#actualizar-un-servidor-en-producción)
 14. [Licencia](#licencia)
 
 ## Características Principales
@@ -34,9 +36,13 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 - **Panel de administración** para gestión de usuarios e instancias TSP
 - **Subida y validación** de soluciones TSP en tiempo real
 - **Ranking dinámico** con ordenación por valor objetivo y fecha
+- **Tiempo de resolución** opcional e informativo en cada envío
+- **Clasificación General** entre competiciones: medallero y clasificación de óptimos
+- **Informe imprimible (PDF)** del ranking con estadísticas, progreso y mejor solución, listo para publicar en Moodle
+- **Pausa de la competición** para bloquear temporalmente los envíos
 - **Visualización interactiva** de instancias TSP con gráficos D3.js
 - **Descarga de instancias** en formato TSPLIB
-- **Exportación CSV** de todas las soluciones
+- **Exportación CSV** de todas las soluciones y del ranking
 - **Diseño responsive** con colores institucionales de la URJC
 
 ## Tecnologías Utilizadas
@@ -106,7 +112,9 @@ topabii/
 │   ├── login.js           # Lógica de inicio de sesión
 │   ├── admin.js           # Funcionalidad del panel admin
 │   ├── user.js            # Funcionalidad del panel usuario
-│   ├── ranking.js         # Lógica del ranking público
+│   ├── ranking.js         # Lógica del ranking público y la Clasificación General
+│   ├── ranking-report.html # Informe imprimible del ranking (PDF, solo admin)
+│   ├── ranking-report.js  # Generación del informe con gráficos SVG
 │   └── visualize.js       # Visualización interactiva con D3.js
 └── README.md              # Esta documentación
 ```
@@ -124,6 +132,8 @@ topabii/
    - Subir instancias en formato TSPLIB estándar
    - Validación automática de formato y coordenadas
    - Soporte para EUC_2D (coordenadas euclidianas 2D)
+   - Al reemplazar la instancia, las posiciones finales de la competición se **archivan en la Clasificación General** antes de borrar el ranking (solo si hubo participantes; los administradores no cuentan)
+   - La configuración de la competición se reinicia: nombre tomado del fichero TSPLIB, sin fecha de cierre, sin pausa y ranking sin congelar
   
 <img width="1159" height="870" alt="image" src="https://github.com/user-attachments/assets/b2bde833-6f22-4429-a06f-488ce3598bb3" />
 
@@ -131,18 +141,34 @@ topabii/
 3. **Control del Ranking**
    - Congelar/descongelar visualización del ranking
    - Las soluciones siguen procesándose en segundo plano
+   - **Imprimir Ranking (PDF)**: abre un informe A4 con estadísticas (mejor solución, participación, envíos, media, mediana, gaps...), la ruta de la mejor solución, el progreso de la mejor solución, los envíos por día, la clasificación completa y el historial de récords. Se guarda como PDF desde el diálogo de impresión
+   - **Exportar Ranking CSV**: posición, usuario, email, función objetivo, gap, método, envíos, tiempo y última mejora
+   - El informe y el CSV usan siempre los datos actuales (aunque el ranking esté congelado) y excluyen a los administradores
 
 <img width="573" height="630" alt="image" src="https://github.com/user-attachments/assets/eb8f1672-bc24-4345-8abd-5ed96018a18f" />
 
 
 4. **Exportar Datos**
    - Descargar CSV con todas las soluciones
-   - Incluye: usuario, solución, valor objetivo, fecha/hora, validez
+   - Incluye: usuario, solución, valor objetivo, método, tiempo, fecha/hora, validez
   
 <img width="573" height="630" alt="image" src="https://github.com/user-attachments/assets/375603f2-2cc4-4532-a719-2d0d04db7ff6" />
 
 
-   5. **Validador de Soluciones**
+5. **Configuración de la Competición**
+   - Nombre de la instancia y fecha/hora de cierre
+   - **Pausar / Reanudar competición**: mientras está pausada no se pueden enviar soluciones (se avisa en la página del alumno, el ranking y la portada)
+
+6. **Gestión de Usuarios**
+   - La lista se carga automáticamente al abrir el panel
+   - **Buscador por correo** que filtra mientras escribes
+   - La tabla muestra 5 filas y tiene su propio scroll, con la cabecera fija
+
+7. **Histórico de Competiciones**
+   - Lista de competiciones archivadas que cuentan en la Clasificación General
+   - Permite eliminar una competición del histórico si no debe contar
+
+   8. **Validador de Soluciones**
        - Herramienta disponible en el panel de administración (sección "Gestión de Usuarios").
        - Permite pegar una solución (nodos separados por comas) y comprobar rápidamente:
           - Si la longitud de la ruta coincide con la dimensión de la instancia cargada.
@@ -162,11 +188,14 @@ topabii/
    - Validación automática de formato
    - Cálculo automático del valor objetivo
    - Solo se guarda la mejor solución de cada usuario
+   - **Tiempo (opcional)**: segundos que ha tardado el algoritmo en obtener la solución. Es solo informativo, no afecta al ranking
 
 2. **Ver Estadísticas Personales**
    - Mejor valor objetivo
    - Número total de envíos
+   - Tiempo de la mejor solución
    - Fecha de última mejora
+   - Historial de envíos con método y tiempo
 
 3. **Cambiar Contraseña**
    - Actualización segura de credenciales
@@ -174,8 +203,11 @@ topabii/
 ### Ranking Público
 
 - **Acceso libre** (sin necesidad de autenticación)
-- **Ordenación**: Por valor objetivo (menor mejor), luego por fecha (más reciente mejor)
+- **Dos pestañas**: *Competición Actual* y *Clasificación General*
+- **Ordenación**: Por valor objetivo (menor mejor), luego por fecha (quien lo consiguió antes)
 - **Podio visual**: Destacado especial para top 3 posiciones
+- **Tu posición**: si has iniciado sesión, tu fila aparece sombreada en rojo
+- **Tiempo**: columna con el tiempo de la mejor solución de cada participante
 - **Actualización automática** cada 30 segundos
 - **Estadísticas generales**: Participantes, mejor solución, total envíos
 - **Últimos envíos**: Tabla con los 5 envíos más recientes de la competición (oculta mientras el ranking está congelado)
@@ -183,6 +215,16 @@ topabii/
 
 <img width="2320" height="1472" alt="image" src="https://github.com/user-attachments/assets/c32b2094-19dd-43a1-8db5-1b452e9f1e65" />
 
+
+### Clasificación General
+
+Cada vez que el administrador carga una nueva instancia, las posiciones finales de la competición anterior se guardan y pasan a la Clasificación General (`/ranking#general`), que muestra:
+
+- **Medallero**: ordenado por oros, platas y bronces (los puestos son los del ranking: a igual valor, queda delante quien lo consiguió antes). Incluye el número de competiciones, el puesto medio y las **últimas clasificaciones** como `[1][7][3][–]`, con colores oro, plata y bronce
+- **Clasificación de Óptimos**: un óptimo es igualar la mejor solución de una competición (varios participantes pueden lograrlo en la misma). Ordenada por número de óptimos; en caso de empate, por número de competiciones disputadas y, después, por la desviación promedio respecto a la mejor solución de cada competición
+- **Competiciones disputadas**: instancia, fecha, participantes, mejor solución y ganador
+
+El puesto medio y la desviación promedio se calculan sobre las competiciones en las que ha participado cada alumno.
 
 ### Visualización TSP
 
@@ -195,7 +237,7 @@ topabii/
 Al visualizar la solución de un usuario desde el ranking (`/visualize?userId=...`):
 
 - **Mejor solución del usuario**: Se dibuja su ruta junto con su valor de función objetivo y el método utilizado
-- **Historial de envíos**: Tabla con todos sus envíos (número de envío, valor F.O., método y fecha/hora), que se puede ordenar por orden de envío o por valor F.O.; la mejor solución se marca con ⭐
+- **Historial de envíos**: Tabla con todos sus envíos (número de envío, valor F.O., método, tiempo y fecha/hora), que se puede ordenar por orden de envío o por valor F.O.; la mejor solución se marca con ⭐
 - **Ver cualquier envío**: Al pulsar 👁️ en un envío se dibuja su ruta en el mapa (*"Solución del envío #N de ..."*) y el botón **Volver a ver la mejor** recupera la mejor solución
 - **Comparar con la mejor del concurso**: La casilla *Mostrar mejor solución del concurso* (desactivada por defecto) superpone en rojo la ruta de la mejor solución de la competición para ver las diferencias con la solución mostrada
 - **Progresión de soluciones**: Gráfico con la evolución de los envíos del usuario frente a la mejor solución de la competición
@@ -216,11 +258,17 @@ Al visualizar la solución de un usuario desde el ranking (`/visualize?userId=..
 - `POST /api/admin/create-users` - Crear nuevos usuarios
 - `POST /api/admin/upload-tsp` - Subir instancia TSP
 - `POST /api/admin/toggle-ranking` - Congelar/descongelar ranking
+- `POST /api/admin/set-paused` - Pausar/reanudar el envío de soluciones
 - `GET /api/admin/export-csv` - Exportar datos CSV
+- `GET /api/admin/export-ranking-csv` - Exportar el ranking actual en CSV
+- `GET /api/admin/ranking-report` - Datos del informe imprimible del ranking
+- `GET /api/admin/competition-history` - Competiciones archivadas
+- `POST /api/admin/delete-competition` - Eliminar una competición del histórico
+- `GET /api/admin/users` - Lista de usuarios
 - `GET /api/admin/current-tsp` - Obtener instancia TSP actual (admin)
 
 ### Usuario
-- `POST /api/submit-solution` - Enviar solución TSP
+- `POST /api/submit-solution` - Enviar solución TSP (`solution`, `method` y `time` opcionales)
 - `GET /api/ranking` - Obtener ranking actual
 
 ### Público
@@ -233,6 +281,7 @@ Al visualizar la solución de un usuario desde el ranking (`/visualize?userId=..
 - `GET /api/competition-best-solution` - Ruta de la mejor solución de la competición
 - `GET /api/competition-best-history` - Historial de mejoras de la mejor solución de la competición
 - `GET /api/recent-submissions` - Últimos 5 envíos de la competición (vacío si el ranking está congelado)
+- `GET /api/general-ranking` - Clasificación General (competiciones archivadas y resultados agregados por usuario)
 
 ## Validaciones Implementadas
 
@@ -241,6 +290,8 @@ Al visualizar la solución de un usuario desde el ranking (`/visualize?userId=..
 - Sin números duplicados
 - Formato numérico válido
 - Cálculo correcto del valor objetivo
+- Tiempo opcional: número de segundos mayor o igual que 0
+- Rechazo de envíos si la competición está pausada o ha finalizado
 
 ### Instancias TSPLIB
 - Formato TSPLIB estándar válido
@@ -280,6 +331,10 @@ El diseño sigue la identidad visual de la Universidad Rey Juan Carlos:
 3. **solutions** - Todas las soluciones enviadas
 4. **user_best_solutions** - Mejores soluciones por usuario
 5. **system_settings** - Configuración del sistema
+6. **competition_history** - Competiciones archivadas
+7. **competition_results** - Resultado final de cada participante en cada competición archivada (puesto, valor, desviación, método, tiempo)
+
+Las columnas y tablas nuevas se crean automáticamente al arrancar el servidor sobre una base de datos existente, sin perder datos.
 
 ## Ejemplo de Uso
 
@@ -313,6 +368,13 @@ El diseño sigue la identidad visual de la Universidad Rey Juan Carlos:
 - **Base de datos**: Archivo `topabii.db` en directorio raíz
 - **Backup**: Realizar copia de `topabii.db` regularmente
 - **Reinicio**: `npm start` o reinicio del proceso Node.js
+
+### Actualizar un servidor en producción
+
+1. `git pull` y reiniciar el proceso Node.js (no hace falta `npm install` si no cambian las dependencias)
+2. La base de datos se migra sola al arrancar (columnas y tablas nuevas)
+3. Recargar el navegador con Ctrl+F5 para obtener los JavaScript nuevos
+4. Para empezar una competición nueva, subir la instancia **después** de actualizar: así la competición anterior queda archivada en la Clasificación General
 
 ## Licencia
 MIT License

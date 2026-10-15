@@ -1,6 +1,6 @@
 {
   "name": "topabii",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "description": "TopABII - TSP Competition Platform for Universidad Rey Juan Carlos",
   "main": "server.js",
   "scripts": {
@@ -18,7 +18,12 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": ["TSP", "competition", "URJC", "optimization"],
+  "keywords": [
+    "TSP",
+    "competition",
+    "URJC",
+    "optimization"
+  ],
   "author": "Universidad Rey Juan Carlos",
   "license": "MIT"
 }
