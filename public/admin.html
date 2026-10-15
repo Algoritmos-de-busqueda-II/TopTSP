@@ -111,8 +111,21 @@
                         </button>
                     </div>
 
+                    <div class="grid grid-2 mt-2">
+                        <button class="btn btn-primary" onclick="printRanking()">
+                            🖨️ Imprimir Ranking (PDF)
+                        </button>
+
+                        <button class="btn btn-success" onclick="exportRankingCSV()">
+                            📊 Exportar Ranking CSV
+                        </button>
+                    </div>
+
                     <small class="mt-2">
                         <strong>Reiniciar:</strong> Elimina todas las soluciones y resetea el ranking completamente.
+                    </small><br>
+                    <small>
+                        <strong>Imprimir / Exportar:</strong> Usan siempre los datos actuales, aunque el ranking esté congelado.
                     </small>
                 </div>
             </div>
@@ -189,11 +202,14 @@
             <h2>Gestión de Usuarios</h2>
             <p>Administra los usuarios de la competición</p>
             
-            <div class="mb-3">
+            <div class="users-toolbar mb-3">
+                <input type="search" id="users-search" class="form-control" placeholder="🔍 Buscar por correo..."
+                       autocomplete="off" oninput="filterUsers()">
                 <button class="btn btn-primary" onclick="loadUsers()">🔄 Actualizar Lista</button>
             </div>
+            <small id="users-count" class="text-muted"></small>
             
-            <div id="users-table-container">
+            <div id="users-table-container" class="scrollable-table">
                 <table class="table" id="users-table">
                     <thead>
                         <tr>
@@ -206,7 +222,7 @@
                     </thead>
                     <tbody id="users-tbody">
                         <tr>
-                            <td colspan="5" class="text-center">Haz clic en "Actualizar Lista" para cargar usuarios</td>
+                            <td colspan="5" class="text-center">Cargando usuarios...</td>
                         </tr>
                     </tbody>
                 </table>

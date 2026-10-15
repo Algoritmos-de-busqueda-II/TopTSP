@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadRankingStatus();
     await loadCurrentTSPInstance();
     await loadSystemSettings();
+    loadUsers({ silent: true });
     // Setup solution validator UI and handlers
     setupSolutionValidator();
     
@@ -225,6 +226,42 @@ async function exportCSV() {
         }
     } catch (error) {
         console.error('Export error:', error);
+        showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
+    }
+}
+
+function printRanking() {
+    // The report page opens the print dialog itself once it has rendered
+    const win = window.open('/ranking-report?print=1', '_blank');
+    if (!win) {
+        window.location.href = '/ranking-report?print=1';
+    }
+}
+
+async function exportRankingCSV() {
+    clearAlerts('alert-container');
+
+    try {
+        const response = await fetch('/api/admin/export-ranking-csv');
+
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ranking-${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            showAlert('alert-container', 'Ranking exportado en CSV.', 'success');
+        } else {
+            const data = await response.json();
+            showAlert('alert-container', data.error || 'Error al exportar el ranking', 'danger');
+        }
+    } catch (error) {
+        console.error('Export ranking error:', error);
         showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
     }
 }
@@ -794,15 +831,19 @@ async function clearEndDate() {
     }
 }
 
-async function loadUsers() {
-    clearAlerts('alert-container');
+let allUsers = []; // Last list loaded from the server, filtered client-side by email
+
+async function loadUsers(options = {}) {
+    if (!options.silent) clearAlerts('alert-container');
     
     try {
         const response = await fetch('/api/admin/users');
         if (response.ok) {
-            const users = await response.json();
-            populateUsersTable(users);
-            showAlert('alert-container', `${users.length} usuarios cargados.`, 'success');
+            allUsers = await response.json();
+            filterUsers();
+            if (!options.silent) {
+                showAlert('alert-container', `${allUsers.length} usuarios cargados.`, 'success');
+            }
         } else {
             const data = await response.json();
             showAlert('alert-container', data.error || 'Error al cargar usuarios', 'danger');
@@ -813,13 +854,39 @@ async function loadUsers() {
     }
 }
 
-function populateUsersTable(users) {
+function filterUsers() {
+    const input = document.getElementById('users-search');
+    const query = input ? input.value.trim().toLowerCase() : '';
+    const users = query
+        ? allUsers.filter(user => String(user.email || '').toLowerCase().includes(query))
+        : allUsers;
+
+    const count = document.getElementById('users-count');
+    if (count) {
+        count.textContent = query
+            ? `${users.length} de ${allUsers.length} usuarios`
+            : `${allUsers.length} usuarios`;
+    }
+
+    populateUsersTable(users, query);
+}
+
+function escapeHtml(text) {
+    return String(text === null || text === undefined ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function populateUsersTable(users, query = '') {
     const tbody = document.getElementById('users-tbody');
     tbody.innerHTML = '';
     
     if (users.length === 0) {
         const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="5" class="text-center">No hay usuarios registrados</td>';
+        row.innerHTML = `<td colspan="5" class="text-center">${query ? 'Ningún usuario coincide con la búsqueda' : 'No hay usuarios registrados'}</td>`;
         tbody.appendChild(row);
         return;
     }
@@ -839,18 +906,21 @@ function populateUsersTable(users) {
         const lastUpdate = user.last_improvement ? 
             formatDate(user.last_improvement) : 
             '-';
+
+        // Email goes inside a JS string inside an HTML attribute
+        const emailArg = escapeHtml(JSON.stringify(String(user.email)));
         
         row.innerHTML = `
-            <td>${user.email}</td>
+            <td>${escapeHtml(user.email)}</td>
             <td>${status}</td>
             <td>${bestSolution}</td>
             <td>${lastUpdate}</td>
             <td>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-warning" onclick="resetUserPassword(${user.id}, '${user.email}')">
+                    <button class="btn btn-sm btn-warning" onclick="resetUserPassword(${user.id}, ${emailArg})">
                         🔑 Reset
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, '${user.email}')">
+                    <button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id}, ${emailArg})">
                         🗑️ Eliminar
                     </button>
                 </div>
@@ -859,6 +929,25 @@ function populateUsersTable(users) {
         
         tbody.appendChild(row);
     });
+
+    fitUsersTableHeight();
+}
+
+// Limit the users table to header + 5 rows; the rest scrolls inside the container
+function fitUsersTableHeight() {
+    const container = document.getElementById('users-table-container');
+    const table = document.getElementById('users-table');
+    if (!container || !table) return;
+
+    const rows = table.tBodies[0].rows;
+    if (rows.length <= 5) {
+        container.style.maxHeight = '';
+        return;
+    }
+
+    let height = table.tHead.offsetHeight;
+    for (let i = 0; i < 5; i++) height += rows[i].offsetHeight;
+    if (height > 0) container.style.maxHeight = `${height + 2}px`;
 }
 
 async function resetUserPassword(userId, email) {

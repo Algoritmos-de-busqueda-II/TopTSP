@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Informe del Ranking - TopTSP</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        :root {
+            --red: #C41E3A;
+            --dark-red: #8B0000;
+            --ink: #1f2328;
+            --muted: #5f6670;
+            --line: #e3e5e8;
+            --soft: #f6f7f8;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: #e9ebee;
+            color: var(--ink);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+
+        .toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1rem;
+            background: #fff;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .toolbar button {
+            border: 0;
+            border-radius: 6px;
+            padding: 0.55rem 1.1rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            background: var(--red);
+            color: #fff;
+        }
+
+        .toolbar button.secondary {
+            background: #6c757d;
+        }
+
+        .toolbar span {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .page {
+            width: 210mm;
+            max-width: 100%;
+            margin: 1.5rem auto;
+            padding: 14mm 14mm 16mm;
+            background: #fff;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+        }
+
+        header.report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 1rem;
+            padding-bottom: 0.6rem;
+            border-bottom: 3px solid var(--red);
+        }
+
+        header.report-header h1 {
+            margin: 0;
+            font-size: 20pt;
+            color: var(--red);
+        }
+
+        header.report-header .subtitle {
+            color: var(--muted);
+            font-size: 10pt;
+        }
+
+        header.report-header .meta {
+            text-align: right;
+            font-size: 9.5pt;
+            color: var(--muted);
+        }
+
+        h2 {
+            font-size: 13pt;
+            margin: 1.4rem 0 0.6rem;
+            color: var(--dark-red);
+            border-bottom: 1px solid var(--line);
+            padding-bottom: 0.25rem;
+            break-after: avoid;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .stat {
+            background: var(--soft);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 0.5rem 0.6rem;
+        }
+
+        .stat .label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: var(--muted);
+        }
+
+        .stat .value {
+            font-size: 14pt;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat .value.highlight { color: var(--red); }
+
+        .stat .hint {
+            font-size: 8pt;
+            color: var(--muted);
+        }
+
+        .two-col {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr;
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .figure {
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 0.4rem;
+            break-inside: avoid;
+        }
+
+        .figure svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .caption {
+            font-size: 8.5pt;
+            color: var(--muted);
+            margin-top: 0.3rem;
+        }
+
+        dl.best-info {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.3rem 0.8rem;
+            margin: 0;
+            font-size: 10pt;
+        }
+
+        dl.best-info dt { color: var(--muted); }
+        dl.best-info dd { margin: 0; font-weight: 600; word-break: break-word; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            font-variant-numeric: tabular-nums;
+        }
+
+        thead { display: table-header-group; }
+
+        th {
+            background: var(--red);
+            color: #fff;
+            text-align: left;
+            font-weight: 600;
+            padding: 0.35rem 0.45rem;
+        }
+
+        td {
+            padding: 0.3rem 0.45rem;
+            border-bottom: 1px solid var(--line);
+            vertical-align: top;
+        }
+
+        tr { break-inside: avoid; }
+
+        tbody tr:nth-child(even) td { background: var(--soft); }
+
+        td.num, th.num { text-align: right; }
+
+        tr.podium-1 td { background: #fff4c2 !important; font-weight: 700; }
+        tr.podium-2 td { background: #eef0f2 !important; font-weight: 600; }
+        tr.podium-3 td { background: #f8e6d6 !important; font-weight: 600; }
+
+        td.method {
+            max-width: 55mm;
+            word-break: break-word;
+        }
+
+        .note {
+            font-size: 8.5pt;
+            color: var(--muted);
+            margin-top: 0.4rem;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffe08a;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            font-size: 9.5pt;
+            margin-top: 0.8rem;
+        }
+
+        footer.report-footer {
+            margin-top: 1.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--line);
+            font-size: 8.5pt;
+            color: var(--muted);
+            text-align: center;
+        }
+
+        .loading, .error {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--muted);
+        }
+
+        .error { color: var(--red); }
+
+        .avoid-break { break-inside: avoid; }
+
+        @media (max-width: 700px) {
+            .page { padding: 16px; margin: 0; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .two-col { grid-template-columns: 1fr; }
+        }
+
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+
+        @media print {
+            body { background: #fff; font-size: 10pt; }
+            .toolbar, .no-print { display: none !important; }
+            .page { width: auto; margin: 0; padding: 0; box-shadow: none; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+        <button class="secondary" onclick="window.close()">Cerrar</button>
+        <span>En el diálogo de impresión elige «Guardar como PDF».</span>
+    </div>
+
+    <main class="page" id="report">
+        <div class="loading">Generando informe...</div>
+    </main>
+
+    <script src="ranking-report.js"></script>
+</body>
+</html>

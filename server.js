@@ -63,7 +63,7 @@ function requireAdmin(req, res, next) {
         next();
     } else {
         // For HTML pages, redirect to login
-        if (req.path === '/admin') {
+        if (req.path === '/admin' || req.path === '/ranking-report') {
             res.redirect('/login');
         } else {
             // For API endpoints, return JSON error
@@ -918,6 +918,195 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
     });
 });
 
+// Promise wrappers around a sqlite3 connection (used by the report endpoints)
+function dbAll(db, sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+    });
+}
+
+function dbGet(db, sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+    });
+}
+
+// Live ranking (ignores the frozen snapshot, excludes admin test submissions), same ordering as /api/ranking
+const LIVE_RANKING_SQL = `
+    SELECT
+        ubs.user_id,
+        u.email,
+        ubs.best_objective_value,
+        ubs.best_method,
+        ubs.last_improvement,
+        ubs.total_submissions
+    FROM user_best_solutions ubs
+    JOIN users u ON ubs.user_id = u.id
+    WHERE ubs.best_objective_value IS NOT NULL AND u.is_admin = 0
+    ORDER BY ROUND(CAST(ubs.best_objective_value AS REAL), 2) ASC, datetime(ubs.last_improvement) ASC
+`;
+
+// Ranking report data for the printable PDF (admin only, always live data)
+app.get('/api/admin/ranking-report', requireAdmin, async (req, res) => {
+    const db = getDatabase();
+
+    try {
+        const settingsRows = await dbAll(db, 'SELECT key, value FROM system_settings');
+        const settings = {};
+        settingsRows.forEach(row => { settings[row.key] = row.value; });
+
+        let instance = null;
+        const instanceId = parseInt(settings.current_tsp_instance);
+        if (!isNaN(instanceId)) {
+            const row = await dbGet(db, 'SELECT id, name, dimension, coordinates FROM tsp_instances WHERE id = ?', [instanceId]);
+            if (row) {
+                let coordinates = [];
+                try {
+                    coordinates = JSON.parse(row.coordinates || '[]');
+                } catch (e) {
+                    coordinates = [];
+                }
+                instance = { id: row.id, name: row.name, dimension: row.dimension, coordinates };
+            }
+        }
+
+        const ranking = (await dbAll(db, LIVE_RANKING_SQL)).map(r => ({
+            user: r.email ? r.email.split('@')[0] : '',
+            best_objective_value: Number(Number(r.best_objective_value).toFixed(2)),
+            best_method: r.best_method || '',
+            last_improvement: r.last_improvement,
+            total_submissions: r.total_submissions || 0
+        }));
+
+        const registered = await dbGet(db, 'SELECT COUNT(*) AS n FROM users WHERE is_admin = 0');
+        const submissionCounts = await dbGet(db, `
+            SELECT COUNT(*) AS total,
+                   SUM(CASE WHEN s.is_valid = 1 THEN 1 ELSE 0 END) AS valid,
+                   MIN(s.submitted_at) AS first_at,
+                   MAX(s.submitted_at) AS last_at
+            FROM solutions s
+            JOIN users u ON s.user_id = u.id
+            WHERE u.is_admin = 0
+        `);
+
+        // Valid submissions in chronological order: global best progression and activity per day
+        const validRows = await dbAll(db, `
+            SELECT s.objective_value, s.method, s.submitted_at, u.email
+            FROM solutions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.is_valid = 1 AND u.is_admin = 0
+            ORDER BY s.submitted_at ASC, s.id ASC
+        `);
+
+        const improvements = [];
+        const perDay = {};
+        let currentBest = Infinity;
+        for (const r of validRows) {
+            const day = String(r.submitted_at || '').slice(0, 10);
+            if (day) perDay[day] = (perDay[day] || 0) + 1;
+
+            const val = Number(r.objective_value);
+            if (isNaN(val)) continue;
+            if (val < currentBest - 1e-9) {
+                currentBest = val;
+                improvements.push({
+                    date: r.submitted_at,
+                    value: Number(val.toFixed(2)),
+                    user: r.email ? r.email.split('@')[0] : '',
+                    method: r.method || ''
+                });
+            }
+        }
+
+        const best = await dbGet(db, `
+            SELECT s.solution, s.method, ubs.best_objective_value, u.email
+            FROM user_best_solutions ubs
+            JOIN solutions s ON ubs.best_solution_id = s.id
+            JOIN users u ON ubs.user_id = u.id
+            WHERE ubs.best_objective_value IS NOT NULL AND u.is_admin = 0
+            ORDER BY ROUND(CAST(ubs.best_objective_value AS REAL), 2) ASC, datetime(ubs.last_improvement) ASC
+            LIMIT 1
+        `);
+
+        let bestSolution = null;
+        if (best) {
+            bestSolution = {
+                route: String(best.solution || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)),
+                method: best.method || '',
+                objectiveValue: Number(Number(best.best_objective_value).toFixed(2)),
+                user: best.email ? best.email.split('@')[0] : ''
+            };
+        }
+
+        db.close();
+
+        res.json({
+            generatedAt: new Date().toISOString(),
+            instanceName: settings.instance_name || (instance ? instance.name : ''),
+            endDate: settings.competition_end_date || '',
+            frozen: settings.ranking_frozen === 'true',
+            instance,
+            ranking,
+            registeredUsers: registered ? registered.n : 0,
+            submissions: {
+                total: submissionCounts ? submissionCounts.total || 0 : 0,
+                valid: submissionCounts ? submissionCounts.valid || 0 : 0,
+                firstAt: submissionCounts ? submissionCounts.first_at : null,
+                lastAt: submissionCounts ? submissionCounts.last_at : null,
+                perDay: Object.keys(perDay).sort().map(day => ({ day, count: perDay[day] }))
+            },
+            improvements,
+            bestSolution
+        });
+    } catch (err) {
+        db.close();
+        console.error('Error building ranking report:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Export current (live) ranking as CSV (admin only)
+app.get('/api/admin/export-ranking-csv', requireAdmin, (req, res) => {
+    const db = getDatabase();
+
+    db.all(LIVE_RANKING_SQL, (err, rows) => {
+        db.close();
+        if (err) {
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        const csvField = (value) => {
+            let text = value === null || value === undefined ? '' : String(value);
+            // Neutralise spreadsheet formulas in student-provided text
+            if (/^[=+\-@\t\r]/.test(text) && isNaN(Number(text))) text = "'" + text;
+            return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        };
+
+        const best = rows.length > 0 ? Number(rows[0].best_objective_value) : null;
+        const lines = [['Posicion', 'Usuario', 'Email', 'Funcion Objetivo', 'Gap (%)', 'Metodo', 'Envios', 'Ultima Mejora'].join(',')];
+        rows.forEach((r, index) => {
+            const value = Number(r.best_objective_value);
+            const gap = best ? ((value - best) / best) * 100 : 0;
+            lines.push([
+                index + 1,
+                r.email ? r.email.split('@')[0] : '',
+                r.email,
+                value.toFixed(2),
+                gap.toFixed(2),
+                r.best_method || '',
+                r.total_submissions || 0,
+                r.last_improvement || ''
+            ].map(csvField).join(','));
+        });
+
+        const date = new Date().toISOString().slice(0, 10);
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="ranking-${date}.csv"`);
+        // BOM so Excel detects UTF-8 (accents in methods)
+        res.send('﻿' + lines.join('\r\n') + '\r\n');
+    });
+});
+
 // Backup database (admin only)
 app.post('/api/admin/backup-database', requireAdmin, (req, res) => {
     try {
@@ -1021,6 +1210,10 @@ app.get('/user', requireAuthHTML, (req, res) => {
 
 app.get('/ranking', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'ranking.html'));
+});
+
+app.get('/ranking-report', requireAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'ranking-report.html'));
 });
 
 app.get('/visualize', (req, res) => {
