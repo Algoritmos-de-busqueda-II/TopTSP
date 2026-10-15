@@ -50,7 +50,7 @@
             <!-- Solution Stats -->
             <div id="solution-stats" class="mt-3 hidden">
                 <h3>Estadísticas Personales</h3>
-                <div class="grid grid-3">
+                <div class="grid grid-4">
                     <div class="text-center">
                         <p><strong>Mejor Valor</strong></p>
                         <p id="best-value">-</p>
@@ -58,6 +58,10 @@
                     <div class="text-center">
                         <p><strong>Envíos Totales</strong></p>
                         <p id="total-submissions">-</p>
+                    </div>
+                    <div class="text-center">
+                        <p><strong>Tiempo (mejor)</strong></p>
+                        <p id="best-time">-</p>
                     </div>
                     <div class="text-center">
                         <p><strong>Última Mejora</strong></p>
@@ -89,8 +93,21 @@
                                placeholder="Ej: GA, SA, ACO" maxlength="10">
                         <small>Máximo 10 caracteres. Describe el método o algoritmo utilizado</small>
                     </div>
+                    <div class="form-group">
+                        <label for="time">Tiempo en segundos (opcional):</label>
+                        <input type="number" id="time" name="time" class="form-control"
+                               placeholder="Ej: 12.5" min="0" step="any"
+                               oninvalid="this.setCustomValidity('Introduce un número de segundos mayor o igual que 0')"
+                               oninput="this.setCustomValidity('')">
+                        <small>Tiempo que ha tardado tu algoritmo en obtener esta solución. Es solo informativo, no afecta al ranking</small>
+                    </div>
                     <button type="submit" class="btn btn-primary btn-block">Enviar Solución</button>
                 </form>
+            </div>
+
+            <div id="paused-message" class="text-center" style="display: none;">
+                <h3>⏸️ Competición pausada</h3>
+                <p>El administrador ha pausado temporalmente el envío de soluciones. Vuelve a intentarlo más tarde.</p>
             </div>
 
             <div id="no-instance-message" class="text-center" style="display: none;">
@@ -116,6 +133,7 @@
                             <th>Solución</th>
                             <th>Valor Objetivo</th>
                             <th>Método</th>
+                            <th>Tiempo</th>
                             <th>Estado</th>
                             <th>Fecha/Hora</th>
                         </tr>

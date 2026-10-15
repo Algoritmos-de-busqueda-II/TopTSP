@@ -84,6 +84,7 @@ function initializeDatabase() {
             db.run(`INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)`, ['frozen_ranking_timestamp', '']);
             db.run(`INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)`, ['competition_end_date', '']);
             db.run(`INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)`, ['instance_name', 'Berlin 52']);
+            db.run(`INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)`, ['competition_paused', 'false']);
 
             // Add method column to existing solutions table if it doesn't exist
             db.run(`ALTER TABLE solutions ADD COLUMN method TEXT DEFAULT ''`, (err) => {
@@ -98,6 +99,45 @@ function initializeDatabase() {
                     console.error('Error adding best_method column:', err);
                 }
             });
+
+            // Optional time (seconds) the student needed to obtain each solution
+            db.run(`ALTER TABLE solutions ADD COLUMN time_seconds REAL`, (err) => {
+                if (err && !err.message.includes('duplicate column name')) {
+                    console.error('Error adding time_seconds column:', err);
+                }
+            });
+
+            db.run(`ALTER TABLE user_best_solutions ADD COLUMN best_time_seconds REAL`, (err) => {
+                if (err && !err.message.includes('duplicate column name')) {
+                    console.error('Error adding best_time_seconds column:', err);
+                }
+            });
+
+            // Finished competitions, archived when a new instance replaces the current one
+            db.run(`CREATE TABLE IF NOT EXISTS competition_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                instance_name TEXT NOT NULL,
+                dimension INTEGER,
+                best_value REAL,
+                participants INTEGER DEFAULT 0,
+                archived_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`);
+
+            // Final standing of every participant in each archived competition
+            db.run(`CREATE TABLE IF NOT EXISTS competition_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                competition_id INTEGER NOT NULL,
+                user_id INTEGER,
+                email TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                objective_value REAL NOT NULL,
+                deviation REAL NOT NULL,
+                method TEXT DEFAULT '',
+                time_seconds REAL,
+                total_submissions INTEGER DEFAULT 0,
+                last_improvement TEXT,
+                FOREIGN KEY (competition_id) REFERENCES competition_history (id)
+            )`);
         });
 
         db.close((err) => {

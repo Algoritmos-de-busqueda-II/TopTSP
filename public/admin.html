@@ -62,7 +62,7 @@
                             <strong>Instancia Actual:</strong><br>
                             <span id="current-instance-info"></span>
                         </div>
-                        <p><strong>⚠️ Atención:</strong> Si subes una nueva instancia, se eliminará todo el ranking y las soluciones actuales.</p>
+                        <p><strong>⚠️ Atención:</strong> Si subes una nueva instancia, se eliminará todo el ranking y las soluciones actuales. Antes, las posiciones finales se guardan en la <strong>Clasificación General</strong>.</p>
                     </div>
                     <div id="no-instance" class="hidden">
                         <div class="alert alert-warning">
@@ -195,6 +195,19 @@
                     </div>
                 </div>
             </div>
+
+            <div class="mt-3">
+                <h3>Envío de Soluciones:</h3>
+                <div id="paused-status" class="mb-2">
+                    <span class="status-indicator status-online"></span>
+                    <span>Competición activa: los alumnos pueden enviar soluciones</span>
+                </div>
+                <button id="toggle-pause-btn" class="btn btn-warning" onclick="togglePause()">
+                    ⏸️ Pausar Competición
+                </button>
+            </div>
+
+            <small class="mt-2">Al subir una nueva instancia, la configuración se reinicia: nombre de la instancia del fichero TSPLIB, sin fecha de cierre, sin pausa y ranking sin congelar.</small>
         </div>
 
         <!-- User Management -->
@@ -223,6 +236,31 @@
                     <tbody id="users-tbody">
                         <tr>
                             <td colspan="5" class="text-center">Cargando usuarios...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Archived competitions (general classification) -->
+        <div class="card">
+            <h2>Histórico de Competiciones</h2>
+            <p>Competiciones finalizadas que cuentan en la Clasificación General. Se archivan automáticamente al subir una nueva instancia (solo si hubo participantes).</p>
+
+            <div class="scrollable-table">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Instancia</th>
+                            <th>Archivada</th>
+                            <th>Participantes</th>
+                            <th>Mejor Solución</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr>
+                            <td colspan="5" class="text-center">Cargando histórico...</td>
                         </tr>
                     </tbody>
                 </table>

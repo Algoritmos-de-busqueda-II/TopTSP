@@ -85,6 +85,23 @@ function formatObjectiveValue(value) {
     return Number(value).toFixed(2);
 }
 
+// Optional solving time (seconds) reported by the student: "12.5 s", "3 min 20 s", "1 h 05 min"
+function formatTime(seconds) {
+    if (seconds === null || seconds === undefined || seconds === '' || isNaN(Number(seconds))) return '-';
+    const total = Number(seconds);
+    if (total < 60) {
+        return `${Number(total.toFixed(total < 10 ? 2 : 1))} s`;
+    }
+    if (total < 3600) {
+        const minutes = Math.floor(total / 60);
+        const secs = Math.round(total - minutes * 60);
+        return secs === 60 ? `${minutes + 1} min` : `${minutes} min ${secs} s`;
+    }
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.round((total - hours * 3600) / 60);
+    return minutes === 60 ? `${hours + 1} h 00 min` : `${hours} h ${String(minutes).padStart(2, '0')} min`;
+}
+
 async function checkAuthStatus() {
     try {
         const response = await fetch('/api/user');
@@ -265,6 +282,11 @@ function updateCountdown() {
                 }
             }
             
+            const pausedBanner = document.getElementById('paused-banner');
+            if (pausedBanner) {
+                pausedBanner.classList.toggle('hidden', !(instanceData.hasInstance && settings.competition_paused === 'true'));
+            }
+
             const countdownElement = document.getElementById('countdown');
             const endDateElement = document.getElementById('end-date');
 

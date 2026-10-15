@@ -31,6 +31,12 @@
     </header>
 
     <main class="container">
+        <div class="ranking-tabs" role="tablist">
+            <button class="ranking-tab active" role="tab" data-tab="current" onclick="switchRankingTab('current')">🏆 Competición Actual</button>
+            <button class="ranking-tab" role="tab" data-tab="general" onclick="switchRankingTab('general')">🌍 Clasificación General</button>
+        </div>
+
+        <div id="tab-current">
         <div class="card fade-in">
             <h2 id="competition-title">🏆 Competición Actual: <span id="instance-name">Berlin 52</span></h2>
             <div id="ranking-buttons" class="mt-3 mb-3">
@@ -49,6 +55,7 @@
             </div>
             
             <div class="mb-3 text-center">
+                <div id="paused-banner" class="alert alert-warning hidden">⏸️ <strong>Competición pausada:</strong> el envío de soluciones está desactivado temporalmente.</div>
                 <div id="countdown" class="countdown-timer">⏰ Cargando...</div>
                 <div id="end-date" class="end-date-info"></div>
             </div>
@@ -80,6 +87,7 @@
                             <th>Método</th>
                             <th>Fecha/Hora</th>
                             <th>Total Envíos</th>
+                            <th>Tiempo</th>
                             <th>Ver</th>
                         </tr>
                     </thead>
@@ -131,6 +139,7 @@
                                 <th>Usuario</th>
                                 <th>Valor F.O.</th>
                                 <th>Método</th>
+                                <th>Tiempo</th>
                                 <th>Fecha/Hora</th>
                             </tr>
                         </thead>
@@ -162,6 +171,82 @@
                         <li>🎯 Las mejoras personales se reflejan al instante</li>
                         <li>❄️ Puede congelarse temporalmente</li>
                     </ul>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- General classification across finished competitions -->
+        <div id="tab-general" class="hidden">
+            <div id="general-loading" class="card text-center">
+                <p>Cargando clasificación general...</p>
+            </div>
+
+            <div id="general-empty" class="card text-center hidden">
+                <h2>🌍 Clasificación General</h2>
+                <p>Todavía no ha terminado ninguna competición.</p>
+                <p><small>Cuando el administrador cargue una nueva instancia, las posiciones finales de la competición actual pasarán a esta clasificación.</small></p>
+            </div>
+
+            <div id="general-content" class="hidden">
+                <div class="card">
+                    <h2>🥇 Medallero</h2>
+                    <p>Puestos finales de cada competición (como en el ranking: a igual valor, queda delante quien lo consiguió antes). Ordenado por oros, platas y bronces.</p>
+                    <div style="overflow-x: auto;">
+                        <table class="table general-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Usuario</th>
+                                    <th class="text-center">🥇</th>
+                                    <th class="text-center">🥈</th>
+                                    <th class="text-center">🥉</th>
+                                    <th class="text-center">Competiciones</th>
+                                    <th class="text-center">Puesto medio</th>
+                                    <th>Últimas clasificaciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="medals-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>🎯 Clasificación de Óptimos</h2>
+                    <p>Un óptimo es igualar la mejor solución de una competición (varios pueden conseguirlo en la misma). Ordenado por número de óptimos; en caso de empate, por número de competiciones disputadas y, después, por la desviación promedio respecto a la mejor solución de cada competición.</p>
+                    <div style="overflow-x: auto;">
+                        <table class="table general-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Usuario</th>
+                                    <th class="text-center">Óptimos</th>
+                                    <th class="text-center">Competiciones</th>
+                                    <th class="text-center">Desv. promedio a la mejor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="optimums-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>📚 Competiciones disputadas</h2>
+                    <div style="overflow-x: auto;">
+                        <table class="table general-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Instancia</th>
+                                    <th>Finalizada</th>
+                                    <th class="text-center">Participantes</th>
+                                    <th>Mejor solución</th>
+                                    <th>Ganador</th>
+                                </tr>
+                            </thead>
+                            <tbody id="competitions-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

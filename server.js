@@ -237,6 +237,19 @@ app.post('/api/admin/upload-tsp', requireAdmin, (req, res) => {
     
     // Check if we should replace existing instance
     if (replaceExisting) {
+        // Save the final standings in the general classification before wiping them
+        archiveCurrentCompetition(db)
+            .then(clearCurrentCompetition)
+            .catch(err => {
+                console.error('Error archiving competition:', err);
+                db.close();
+                res.status(500).json({ error: 'Error al archivar la competición actual. No se ha cambiado la instancia.' });
+            });
+    } else {
+        insertTSPInstance();
+    }
+
+    function clearCurrentCompetition() {
         // Clear all solutions and rankings
         db.run('DELETE FROM solutions', (err) => {
             if (err) {
@@ -253,8 +266,6 @@ app.post('/api/admin/upload-tsp', requireAdmin, (req, res) => {
                 insertTSPInstance();
             });
         });
-    } else {
-        insertTSPInstance();
     }
     
     function insertTSPInstance() {
@@ -268,18 +279,35 @@ app.post('/api/admin/upload-tsp', requireAdmin, (req, res) => {
                 return res.status(500).json({ error: 'Database error' });
             }
             
-            // Set as current TSP instance
-            db.run('UPDATE system_settings SET value = ? WHERE key = ?', [this.lastID, 'current_tsp_instance'], (err) => {
-                db.close();
-                if (err) {
-                    return res.status(500).json({ error: 'Error setting current instance' });
-                }
-                res.json({ 
-                    success: true, 
-                    instanceId: this.lastID,
-                    cleared: replaceExisting
+            const instanceId = this.lastID;
+
+            // New instance starts a new competition: set it as current and reset its configuration
+            // (name from the TSPLIB file, no end date, not paused, ranking not frozen)
+            const newSettings = [
+                ['current_tsp_instance', String(instanceId)],
+                ['instance_name', parsedTSP.name],
+                ['competition_end_date', ''],
+                ['competition_paused', 'false'],
+                ['ranking_frozen', 'false'],
+                ['frozen_ranking_data', ''],
+                ['frozen_ranking_timestamp', '']
+            ];
+
+            Promise.all(newSettings.map(([key, value]) =>
+                dbRun(db, 'INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)', [key, value])))
+                .then(() => {
+                    db.close();
+                    res.json({
+                        success: true,
+                        instanceId,
+                        cleared: replaceExisting
+                    });
+                })
+                .catch(err => {
+                    console.error('Error resetting competition settings:', err);
+                    db.close();
+                    res.status(500).json({ error: 'Error setting current instance' });
                 });
-            });
         });
     }
 });
@@ -391,6 +419,8 @@ app.post('/api/admin/full-reset', requireAdmin, (req, res) => {
     db.serialize(() => {
         db.run('DELETE FROM solutions');
         db.run('DELETE FROM user_best_solutions');
+        db.run('DELETE FROM competition_results');
+        db.run('DELETE FROM competition_history');
         db.run('DELETE FROM tsp_instances');
         db.run('DELETE FROM users WHERE is_admin = 0');
         db.run('DELETE FROM system_settings');
@@ -412,6 +442,7 @@ app.post('/api/admin/full-reset', requireAdmin, (req, res) => {
                 ['frozen_ranking_data', ''],
                 ['frozen_ranking_timestamp', ''],
                 ['competition_end_date', ''],
+                ['competition_paused', 'false'],
                 ['instance_name', 'Berlin 52']
             ];
 
@@ -437,23 +468,41 @@ app.post('/api/admin/full-reset', requireAdmin, (req, res) => {
 
 // Submit solution endpoint
 app.post('/api/submit-solution', requireAuth, (req, res) => {
-    const { solution, method } = req.body;
+    const { solution, method, time } = req.body;
     
     if (!solution) {
         return res.status(400).json({ error: 'Solution required' });
     }
+
+    // Optional, informative time in seconds
+    let timeSeconds = null;
+    if (time !== undefined && time !== null && String(time).trim() !== '') {
+        timeSeconds = Number(String(time).trim().replace(',', '.'));
+        if (!isFinite(timeSeconds) || timeSeconds < 0 || timeSeconds > 1e8) {
+            return res.status(400).json({ error: 'El tiempo debe ser un número de segundos mayor o igual que 0.' });
+        }
+        timeSeconds = Math.round(timeSeconds * 1000) / 1000;
+    }
     
     const db = getDatabase();
     
-    // Check competition end date first
-    db.get('SELECT value FROM system_settings WHERE key = ?', ['competition_end_date'], (err, endDateSetting) => {
+    // Check competition end date and pause first
+    db.all('SELECT key, value FROM system_settings WHERE key IN (?, ?)', ['competition_end_date', 'competition_paused'], (err, settingRows) => {
         if (err) {
             db.close();
             return res.status(500).json({ error: 'Database error' });
         }
+
+        const settings = {};
+        settingRows.forEach(row => { settings[row.key] = row.value; });
+
+        if (settings.competition_paused === 'true') {
+            db.close();
+            return res.status(403).json({ error: 'La competición está pausada. No se pueden enviar soluciones hasta que se reanude.' });
+        }
         
-        if (endDateSetting && endDateSetting.value) {
-            const endDate = new Date(endDateSetting.value);
+        if (settings.competition_end_date) {
+            const endDate = new Date(settings.competition_end_date);
             const now = new Date();
             if (now > endDate) {
                 db.close();
@@ -494,8 +543,8 @@ app.post('/api/submit-solution', requireAuth, (req, res) => {
             
             // Insert solution
             const methodValue = method && method.length <= 10 ? method.trim() : '';
-            db.run('INSERT INTO solutions (user_id, tsp_instance_id, solution, objective_value, is_valid, method) VALUES (?, ?, ?, ?, ?, ?)',
-                [req.session.user.id, tspInstanceId, solution, objectiveValue, true, methodValue], function(err) {
+            db.run('INSERT INTO solutions (user_id, tsp_instance_id, solution, objective_value, is_valid, method, time_seconds) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [req.session.user.id, tspInstanceId, solution, objectiveValue, true, methodValue, timeSeconds], function(err) {
                 if (err) {
                     db.close();
                     return res.status(500).json({ error: 'Error saving solution' });
@@ -504,7 +553,7 @@ app.post('/api/submit-solution', requireAuth, (req, res) => {
                 const solutionId = this.lastID;
                 
                 // Update user's best solution
-                updateUserBestSolution(db, req.session.user.id, solutionId, objectiveValue, methodValue, (err, improved) => {
+                updateUserBestSolution(db, req.session.user.id, solutionId, objectiveValue, methodValue, timeSeconds, (err, improved) => {
                     db.close();
                     if (err) {
                         return res.status(500).json({ error: 'Error updating best solution' });
@@ -581,6 +630,7 @@ app.get('/api/ranking', (req, res) => {
                 u.email,
                 ubs.best_objective_value,
                 ubs.best_method,
+                ubs.best_time_seconds,
                 ubs.last_improvement,
                 ubs.total_submissions
             FROM user_best_solutions ubs
@@ -667,6 +717,21 @@ app.post('/api/admin/set-end-date', requireAdmin, (req, res) => {
             return res.status(500).json({ error: 'Database error' });
         }
         res.json({ success: true });
+    });
+});
+
+// Pause/resume submissions (admin only)
+app.post('/api/admin/set-paused', requireAdmin, (req, res) => {
+    const paused = req.body.paused === true || req.body.paused === 'true';
+    const db = getDatabase();
+
+    db.run('INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)',
+        ['competition_paused', paused ? 'true' : 'false'], (err) => {
+        db.close();
+        if (err) {
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true, paused });
     });
 });
 
@@ -845,6 +910,7 @@ app.post('/api/admin/delete-user', requireAdmin, (req, res) => {
     const db = getDatabase();
     
     // Delete user's solutions first
+    db.run('DELETE FROM competition_results WHERE user_id = ?', [userId]);
     db.run('DELETE FROM solutions WHERE user_id = ?', [userId], (err) => {
         if (err) {
             db.close();
@@ -880,6 +946,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
             s.solution,
             s.objective_value,
             s.method,
+            s.time_seconds,
             s.submitted_at,
             s.is_valid
         FROM solutions s
@@ -898,6 +965,7 @@ app.get('/api/admin/export-csv', requireAdmin, (req, res) => {
                 { id: 'solution', title: 'Solution' },
                 { id: 'objective_value', title: 'Función Objetivo' },
                 { id: 'method', title: 'Method' },
+                { id: 'time_seconds', title: 'Time (s)' },
                 { id: 'submitted_at', title: 'Submitted At' },
                 { id: 'is_valid', title: 'Valid' }
             ]
@@ -938,6 +1006,7 @@ const LIVE_RANKING_SQL = `
         u.email,
         ubs.best_objective_value,
         ubs.best_method,
+        ubs.best_time_seconds,
         ubs.last_improvement,
         ubs.total_submissions
     FROM user_best_solutions ubs
@@ -974,6 +1043,7 @@ app.get('/api/admin/ranking-report', requireAdmin, async (req, res) => {
             user: r.email ? r.email.split('@')[0] : '',
             best_objective_value: Number(Number(r.best_objective_value).toFixed(2)),
             best_method: r.best_method || '',
+            best_time_seconds: r.best_time_seconds,
             last_improvement: r.last_improvement,
             total_submissions: r.total_submissions || 0
         }));
@@ -1019,7 +1089,7 @@ app.get('/api/admin/ranking-report', requireAdmin, async (req, res) => {
         }
 
         const best = await dbGet(db, `
-            SELECT s.solution, s.method, ubs.best_objective_value, u.email
+            SELECT s.solution, s.method, s.time_seconds, ubs.best_objective_value, u.email
             FROM user_best_solutions ubs
             JOIN solutions s ON ubs.best_solution_id = s.id
             JOIN users u ON ubs.user_id = u.id
@@ -1033,6 +1103,7 @@ app.get('/api/admin/ranking-report', requireAdmin, async (req, res) => {
             bestSolution = {
                 route: String(best.solution || '').split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)),
                 method: best.method || '',
+                timeSeconds: best.time_seconds,
                 objectiveValue: Number(Number(best.best_objective_value).toFixed(2)),
                 user: best.email ? best.email.split('@')[0] : ''
             };
@@ -1065,6 +1136,157 @@ app.get('/api/admin/ranking-report', requireAdmin, async (req, res) => {
     }
 });
 
+function dbRun(db, sql, params = []) {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) { return err ? reject(err) : resolve(this); });
+    });
+}
+
+// Store the final standings of the current competition (if anyone took part) in the history.
+// Positions follow the live ranking: objective value, then whoever reached it first.
+async function archiveCurrentCompetition(db) {
+    const rows = await dbAll(db, LIVE_RANKING_SQL);
+    if (rows.length === 0) return null;
+
+    const settingsRows = await dbAll(db, 'SELECT key, value FROM system_settings WHERE key IN (?, ?)', ['instance_name', 'current_tsp_instance']);
+    const settings = {};
+    settingsRows.forEach(row => { settings[row.key] = row.value; });
+    const instance = await dbGet(db, 'SELECT name, dimension FROM tsp_instances WHERE id = ?', [parseInt(settings.current_tsp_instance)]);
+
+    const name = settings.instance_name || (instance ? instance.name : '') || 'Competición';
+    const round2 = v => Number(Number(v).toFixed(2));
+    const best = round2(rows[0].best_objective_value);
+
+    await dbRun(db, 'BEGIN TRANSACTION');
+    try {
+        const result = await dbRun(db,
+            'INSERT INTO competition_history (instance_name, dimension, best_value, participants) VALUES (?, ?, ?, ?)',
+            [name, instance ? instance.dimension : null, best, rows.length]);
+        const competitionId = result.lastID;
+
+        for (let i = 0; i < rows.length; i++) {
+            const r = rows[i];
+            const value = round2(r.best_objective_value);
+            const deviation = best > 0 ? ((value - best) / best) * 100 : 0;
+            await dbRun(db, `INSERT INTO competition_results
+                (competition_id, user_id, email, position, objective_value, deviation, method, time_seconds, total_submissions, last_improvement)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [competitionId, r.user_id, r.email, i + 1, value, Number(deviation.toFixed(4)),
+                 r.best_method || '', r.best_time_seconds, r.total_submissions || 0, r.last_improvement]);
+        }
+
+        await dbRun(db, 'COMMIT');
+        return competitionId;
+    } catch (err) {
+        await dbRun(db, 'ROLLBACK').catch(() => {});
+        throw err;
+    }
+}
+
+// General classification across all archived competitions (public)
+app.get('/api/general-ranking', async (req, res) => {
+    const db = getDatabase();
+
+    try {
+        const competitions = await dbAll(db, 'SELECT * FROM competition_history ORDER BY datetime(archived_at) ASC, id ASC');
+        const results = await dbAll(db, 'SELECT * FROM competition_results ORDER BY competition_id ASC, position ASC');
+        db.close();
+
+        const resultsByCompetition = new Map(competitions.map(c => [c.id, []]));
+        results.forEach(r => {
+            if (resultsByCompetition.has(r.competition_id)) resultsByCompetition.get(r.competition_id).push(r);
+        });
+
+        const players = new Map();
+        competitions.forEach(c => {
+            resultsByCompetition.get(c.id).forEach(r => {
+                const key = r.user_id !== null ? `id:${r.user_id}` : `email:${r.email}`;
+                if (!players.has(key)) {
+                    players.set(key, {
+                        user_id: r.user_id,
+                        user: String(r.email || '').split('@')[0],
+                        gold: 0, silver: 0, bronze: 0, optimums: 0,
+                        positions: {}, sumPosition: 0, sumDeviation: 0, participations: 0
+                    });
+                }
+                const p = players.get(key);
+                p.participations++;
+                p.sumPosition += r.position;
+                p.sumDeviation += r.deviation;
+                p.positions[c.id] = r.position;
+                if (r.position === 1) p.gold++;
+                else if (r.position === 2) p.silver++;
+                else if (r.position === 3) p.bronze++;
+                // Optimum: matched the best value of that competition (ties allowed)
+                if (Math.abs(r.objective_value - c.best_value) < 0.005) p.optimums++;
+            });
+        });
+
+        res.json({
+            competitions: competitions.map(c => {
+                const winner = (resultsByCompetition.get(c.id) || [])[0];
+                return {
+                    id: c.id,
+                    name: c.instance_name,
+                    dimension: c.dimension,
+                    bestValue: c.best_value,
+                    participants: c.participants,
+                    archivedAt: c.archived_at,
+                    winner: winner ? String(winner.email || '').split('@')[0] : ''
+                };
+            }),
+            players: Array.from(players.values()).map(p => ({
+                user_id: p.user_id,
+                user: p.user,
+                gold: p.gold,
+                silver: p.silver,
+                bronze: p.bronze,
+                optimums: p.optimums,
+                participations: p.participations,
+                avgPosition: Number((p.sumPosition / p.participations).toFixed(2)),
+                avgDeviation: Number((p.sumDeviation / p.participations).toFixed(4)),
+                positions: p.positions
+            }))
+        });
+    } catch (err) {
+        db.close();
+        console.error('Error building general ranking:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// List archived competitions (admin only)
+app.get('/api/admin/competition-history', requireAdmin, (req, res) => {
+    const db = getDatabase();
+    db.all('SELECT * FROM competition_history ORDER BY datetime(archived_at) DESC, id DESC', (err, rows) => {
+        db.close();
+        if (err) {
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ competitions: rows });
+    });
+});
+
+// Remove an archived competition from the general classification (admin only)
+app.post('/api/admin/delete-competition', requireAdmin, (req, res) => {
+    const id = parseInt(req.body.id);
+    if (isNaN(id)) {
+        return res.status(400).json({ error: 'Competición no válida' });
+    }
+
+    const db = getDatabase();
+    db.serialize(() => {
+        db.run('DELETE FROM competition_results WHERE competition_id = ?', [id]);
+        db.run('DELETE FROM competition_history WHERE id = ?', [id], (err) => {
+            db.close();
+            if (err) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+            res.json({ success: true });
+        });
+    });
+});
+
 // Export current (live) ranking as CSV (admin only)
 app.get('/api/admin/export-ranking-csv', requireAdmin, (req, res) => {
     const db = getDatabase();
@@ -1083,7 +1305,7 @@ app.get('/api/admin/export-ranking-csv', requireAdmin, (req, res) => {
         };
 
         const best = rows.length > 0 ? Number(rows[0].best_objective_value) : null;
-        const lines = [['Posicion', 'Usuario', 'Email', 'Funcion Objetivo', 'Gap (%)', 'Metodo', 'Envios', 'Ultima Mejora'].join(',')];
+        const lines = [['Posicion', 'Usuario', 'Email', 'Funcion Objetivo', 'Gap (%)', 'Metodo', 'Envios', 'Tiempo (s)', 'Ultima Mejora'].join(',')];
         rows.forEach((r, index) => {
             const value = Number(r.best_objective_value);
             const gap = best ? ((value - best) / best) * 100 : 0;
@@ -1095,6 +1317,7 @@ app.get('/api/admin/export-ranking-csv', requireAdmin, (req, res) => {
                 gap.toFixed(2),
                 r.best_method || '',
                 r.total_submissions || 0,
+                r.best_time_seconds === null || r.best_time_seconds === undefined ? '' : r.best_time_seconds,
                 r.last_improvement || ''
             ].map(csvField).join(','));
         });
@@ -1175,6 +1398,7 @@ app.get('/api/user/solutions', requireAuth, (req, res) => {
             s.solution,
             s.objective_value,
             s.method,
+            s.time_seconds,
             s.is_valid,
             s.submitted_at
         FROM solutions s
@@ -1268,7 +1492,7 @@ app.get('/api/user-solution/:userId', (req, res) => {
 
     // Get user's best solution including the route and method
     db.get(`
-        SELECT s.id AS solution_id, s.solution, s.method AS method, ubs.best_objective_value, u.email
+        SELECT s.id AS solution_id, s.solution, s.method AS method, s.time_seconds, ubs.best_objective_value, u.email
         FROM user_best_solutions ubs
         JOIN solutions s ON ubs.best_solution_id = s.id
         JOIN users u ON ubs.user_id = u.id
@@ -1301,6 +1525,7 @@ app.get('/api/user-solution/:userId', (req, res) => {
             res.json({
                 route: route,
                 method: result.method || '',
+                timeSeconds: result.time_seconds,
                 objectiveValue: result.best_objective_value,
                 email: result.email,
                 instanceName: instanceName,
@@ -1316,7 +1541,7 @@ app.get('/api/user-submissions/:userId', (req, res) => {
     const db = getDatabase();
 
     db.all(`
-        SELECT id, objective_value, method, submitted_at
+        SELECT id, objective_value, method, time_seconds, submitted_at
         FROM solutions
         WHERE user_id = ?
         ORDER BY submitted_at ASC, id ASC
@@ -1333,6 +1558,7 @@ app.get('/api/user-submissions/:userId', (req, res) => {
             id: r.id,
             objective_value: r.objective_value,
             method: r.method,
+            time_seconds: r.time_seconds,
             submitted_at: r.submitted_at
         }));
 
@@ -1356,7 +1582,7 @@ app.get('/api/recent-submissions', (req, res) => {
         }
 
         db.all(`
-            SELECT s.objective_value, s.method, s.submitted_at, u.email
+            SELECT s.objective_value, s.method, s.time_seconds, s.submitted_at, u.email
             FROM solutions s
             JOIN users u ON s.user_id = u.id
             WHERE s.is_valid = 1
@@ -1375,6 +1601,7 @@ app.get('/api/recent-submissions', (req, res) => {
                     ? Number(Number(r.objective_value).toFixed(2))
                     : r.objective_value,
                 method: r.method || '',
+                time_seconds: r.time_seconds,
                 submitted_at: r.submitted_at
             }));
 
@@ -1436,7 +1663,7 @@ app.get('/api/user-submission/:userId/:solutionId', (req, res) => {
     const db = getDatabase();
 
     db.get(`
-        SELECT s.id, s.solution, s.method, s.objective_value, s.submitted_at, u.email
+        SELECT s.id, s.solution, s.method, s.time_seconds, s.objective_value, s.submitted_at, u.email
         FROM solutions s
         JOIN users u ON s.user_id = u.id
         WHERE s.id = ? AND s.user_id = ?
@@ -1464,6 +1691,7 @@ app.get('/api/user-submission/:userId/:solutionId', (req, res) => {
             route: route,
             method: result.method || '',
             objectiveValue: result.objective_value,
+            timeSeconds: result.time_seconds,
             submittedAt: result.submitted_at,
             email: result.email
         });
@@ -1502,7 +1730,7 @@ function calculateObjectiveValue(solution, distanceMatrix) {
     return totalDistance;
 }
 
-function updateUserBestSolution(db, userId, solutionId, objectiveValue, method, callback) {
+function updateUserBestSolution(db, userId, solutionId, objectiveValue, method, timeSeconds, callback) {
     db.get('SELECT * FROM user_best_solutions WHERE user_id = ?', [userId], (err, existing) => {
         if (err) {
             return callback(err, false);
@@ -1510,8 +1738,8 @@ function updateUserBestSolution(db, userId, solutionId, objectiveValue, method, 
         
         if (!existing) {
             // First solution for this user
-            db.run('INSERT INTO user_best_solutions (user_id, best_solution_id, best_objective_value, best_method, total_submissions, last_improvement) VALUES (?, ?, ?, ?, ?, ?)',
-                [userId, solutionId, objectiveValue, method, 1, new Date().toISOString()], (err) => {
+            db.run('INSERT INTO user_best_solutions (user_id, best_solution_id, best_objective_value, best_method, best_time_seconds, total_submissions, last_improvement) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [userId, solutionId, objectiveValue, method, timeSeconds, 1, new Date().toISOString()], (err) => {
                 callback(err, true);
             });
         } else {
@@ -1520,6 +1748,7 @@ function updateUserBestSolution(db, userId, solutionId, objectiveValue, method, 
             let newBestId = existing.best_solution_id;
             let newBestValue = existing.best_objective_value;
             let newBestMethod = existing.best_method;
+            let newBestTime = existing.best_time_seconds;
             let lastImprovement = existing.last_improvement;
 
             if (existing.best_objective_value === null || objectiveValue < existing.best_objective_value) {
@@ -1527,11 +1756,12 @@ function updateUserBestSolution(db, userId, solutionId, objectiveValue, method, 
                 newBestId = solutionId;
                 newBestValue = objectiveValue;
                 newBestMethod = method;
+                newBestTime = timeSeconds;
                 lastImprovement = new Date().toISOString();
             }
 
-            db.run('UPDATE user_best_solutions SET best_solution_id = ?, best_objective_value = ?, best_method = ?, total_submissions = ?, last_improvement = ? WHERE user_id = ?',
-                [newBestId, newBestValue, newBestMethod, existing.total_submissions + 1, lastImprovement, userId], (err) => {
+            db.run('UPDATE user_best_solutions SET best_solution_id = ?, best_objective_value = ?, best_method = ?, best_time_seconds = ?, total_submissions = ?, last_improvement = ? WHERE user_id = ?',
+                [newBestId, newBestValue, newBestMethod, newBestTime, existing.total_submissions + 1, lastImprovement, userId], (err) => {
                 callback(err, improved);
             });
         }
@@ -1545,9 +1775,11 @@ function saveRankingSnapshot(callback) {
     // Get current ranking and stats
     db.all(`
         SELECT
+            ubs.user_id,
             u.email,
             ubs.best_objective_value,
             ubs.best_method,
+            ubs.best_time_seconds,
             ubs.last_improvement,
             ubs.total_submissions
         FROM user_best_solutions ubs

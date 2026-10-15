@@ -1,4 +1,13 @@
+let currentUser = null; // Logged-in user (if any), used to highlight their own rows
+let generalLoaded = false;
+
 document.addEventListener('DOMContentLoaded', async function() {
+    currentUser = await checkAuthStatus();
+
+    if (window.location.hash === '#general') {
+        switchRankingTab('general');
+    }
+
     await loadRanking();
 
     // Auto-refresh ranking every 30 seconds
@@ -244,6 +253,10 @@ function populateRankingTable(ranking) {
             row.classList.add('rank-3');
         }
 
+        if (currentUser && entry.email === currentUser.email) {
+            row.classList.add('own-row');
+        }
+
         // Remove the @ part from email (including @)
         const displayEmail = entry.email.split('@')[0];
 
@@ -257,6 +270,7 @@ function populateRankingTable(ranking) {
             <td>${sanitizeHtml(entry.best_method || '-')}</td>
             <td>${formatDate(entry.last_improvement)}</td>
             <td>${entry.total_submissions || 0}</td>
+            <td>${formatTime(entry.best_time_seconds)}</td>
             <td>
                 <button onclick="visualizeUserSolution(${entry.user_id})" class="btn btn-secondary btn-sm" title="Visualizar solución">
                     👁️
@@ -311,6 +325,7 @@ async function loadRecentSubmissions() {
                 <td>${sanitizeHtml(sub.user || '-')}</td>
                 <td><strong>${formatObjectiveValue(sub.objective_value)}</strong></td>
                 <td>${sanitizeHtml(sub.method || '-')}</td>
+                <td>${formatTime(sub.time_seconds)}</td>
                 <td>${isNaN(date.getTime()) ? '-' : formatDate(date)}</td>
             `;
             tbody.appendChild(row);
@@ -361,4 +376,147 @@ function downloadInstance() {
 
 function visualizeInstance() {
     window.location.href = '/visualize';
+}
+
+// ---------- Tabs: current competition / general classification ----------
+
+function switchRankingTab(tab) {
+    const isGeneral = tab === 'general';
+    document.getElementById('tab-current').classList.toggle('hidden', isGeneral);
+    document.getElementById('tab-general').classList.toggle('hidden', !isGeneral);
+    document.querySelectorAll('.ranking-tab').forEach(btn => {
+        const active = btn.dataset.tab === tab;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    try {
+        history.replaceState(null, '', isGeneral ? '#general' : window.location.pathname + window.location.search);
+    } catch (e) {
+        // Ignore: only cosmetic
+    }
+
+    if (isGeneral && !generalLoaded) {
+        loadGeneralRanking();
+    }
+
+    // Plotly charts drawn while hidden need a resize once visible again
+    const chart = document.getElementById('competition-progression');
+    if (!isGeneral && chart && window.Plotly && chart.data) {
+        Plotly.Plots.resize(chart);
+    }
+}
+
+async function loadGeneralRanking() {
+    const loading = document.getElementById('general-loading');
+    const empty = document.getElementById('general-empty');
+    const content = document.getElementById('general-content');
+
+    try {
+        const response = await fetch('/api/general-ranking');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        generalLoaded = true;
+
+        loading.classList.add('hidden');
+        const competitions = data.competitions || [];
+        const players = data.players || [];
+
+        if (competitions.length === 0 || players.length === 0) {
+            empty.classList.remove('hidden');
+            content.classList.add('hidden');
+            return;
+        }
+
+        empty.classList.add('hidden');
+        content.classList.remove('hidden');
+        renderMedalsTable(players, competitions);
+        renderOptimumsTable(players);
+        renderCompetitionsTable(competitions);
+    } catch (error) {
+        console.error('Error loading general ranking:', error);
+        loading.innerHTML = '<p class="alert alert-danger">Error al cargar la clasificación general.</p>';
+    }
+}
+
+// Rank numbers shared by rows that tie on every sorting criterion
+function sharedRanks(rows, sameKey) {
+    const ranks = [];
+    rows.forEach((row, i) => {
+        ranks.push(i > 0 && sameKey(rows[i - 1]) === sameKey(row) ? ranks[i - 1] : i + 1);
+    });
+    return ranks;
+}
+
+function isOwnPlayer(player) {
+    return currentUser && player.user_id !== null && player.user_id === currentUser.id;
+}
+
+function renderMedalsTable(players, competitions) {
+    const tbody = document.getElementById('medals-tbody');
+    const sorted = players.slice().sort((a, b) =>
+        b.gold - a.gold || b.silver - a.silver || b.bronze - a.bronze ||
+        a.avgPosition - b.avgPosition || b.participations - a.participations ||
+        a.user.localeCompare(b.user));
+    const ranks = sharedRanks(sorted, p => [p.gold, p.silver, p.bronze, p.avgPosition, p.participations].join('|'));
+    const recent = competitions.slice(-8);
+
+    tbody.innerHTML = sorted.map((p, i) => `
+        <tr class="${isOwnPlayer(p) ? 'own-row' : ''}">
+            <td><strong>${ranks[i]}</strong></td>
+            <td>${sanitizeHtml(p.user)}</td>
+            <td class="text-center">${p.gold || '-'}</td>
+            <td class="text-center">${p.silver || '-'}</td>
+            <td class="text-center">${p.bronze || '-'}</td>
+            <td class="text-center">${p.participations}</td>
+            <td class="text-center">${p.avgPosition.toFixed(2)}</td>
+            <td><div class="position-badges">${recent.map(c => positionBadge(p.positions[c.id], c)).join('')}</div></td>
+        </tr>
+    `).join('');
+}
+
+function positionBadge(position, competition) {
+    const title = sanitizeHtml(competition.name);
+    if (position === undefined || position === null) {
+        return `<span class="position-badge position-none" title="${title}: no participó">–</span>`;
+    }
+    const medal = position === 1 ? 'position-gold' : position === 2 ? 'position-silver' : position === 3 ? 'position-bronze' : '';
+    return `<span class="position-badge ${medal}" title="${title}: puesto ${position}">${position}</span>`;
+}
+
+function renderOptimumsTable(players) {
+    const tbody = document.getElementById('optimums-tbody');
+    const sorted = players.slice().sort((a, b) =>
+        b.optimums - a.optimums || b.participations - a.participations ||
+        a.avgDeviation - b.avgDeviation || a.user.localeCompare(b.user));
+    const ranks = sharedRanks(sorted, p => [p.optimums, p.participations, p.avgDeviation.toFixed(2)].join('|'));
+
+    tbody.innerHTML = sorted.map((p, i) => `
+        <tr class="${isOwnPlayer(p) ? 'own-row' : ''}">
+            <td><strong>${ranks[i]}</strong></td>
+            <td>${sanitizeHtml(p.user)}</td>
+            <td class="text-center"><strong>${p.optimums}</strong></td>
+            <td class="text-center">${p.participations}</td>
+            <td class="text-center">${p.avgDeviation.toFixed(2)}%</td>
+        </tr>
+    `).join('');
+}
+
+function renderCompetitionsTable(competitions) {
+    const tbody = document.getElementById('competitions-tbody');
+    tbody.innerHTML = competitions.slice().reverse().map((c, i) => {
+        // archived_at comes from SQLite CURRENT_TIMESTAMP (UTC without timezone)
+        const raw = String(c.archivedAt || '');
+        const date = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(raw) ? new Date(raw.replace(' ', 'T') + 'Z') : new Date(raw);
+        return `
+            <tr>
+                <td>${competitions.length - i}</td>
+                <td>${sanitizeHtml(c.name)}${c.dimension ? ` <small>(${c.dimension} nodos)</small>` : ''}</td>
+                <td>${isNaN(date.getTime()) ? '-' : formatDate(date)}</td>
+                <td class="text-center">${c.participants}</td>
+                <td><strong>${formatObjectiveValue(c.bestValue)}</strong></td>
+                <td>${sanitizeHtml(c.winner || '-')}</td>
+            </tr>
+        `;
+    }).join('');
 }

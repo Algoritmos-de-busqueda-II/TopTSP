@@ -66,6 +66,18 @@ function fmtNum(value, decimals = 2) {
     return Number(value).toLocaleString('es-ES', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
+function fmtTime(seconds) {
+    if (seconds === null || seconds === undefined || isNaN(Number(seconds))) return '-';
+    const total = Number(seconds);
+    if (total < 60) return `${Number(total.toFixed(total < 10 ? 2 : 1)).toLocaleString('es-ES')} s`;
+    if (total < 3600) {
+        const minutes = Math.floor(total / 60);
+        return `${minutes} min ${Math.round(total - minutes * 60)} s`;
+    }
+    const hours = Math.floor(total / 3600);
+    return `${hours} h ${String(Math.round((total - hours * 3600) / 60)).padStart(2, '0')} min`;
+}
+
 function median(sorted) {
     if (sorted.length === 0) return null;
     const mid = Math.floor(sorted.length / 2);
@@ -157,6 +169,7 @@ function renderReport(data) {
                     <dt>Usuario</dt><dd>${escapeHtml(data.bestSolution.user)}</dd>
                     <dt>Función objetivo</dt><dd>${fmtNum(data.bestSolution.objectiveValue)}</dd>
                     <dt>Método</dt><dd>${escapeHtml(data.bestSolution.method || '-')}</dd>
+                    <dt>Tiempo</dt><dd>${fmtTime(data.bestSolution.timeSeconds)}</dd>
                 </dl>` : ''}
             </div>
             <div class="avoid-break">
@@ -181,6 +194,7 @@ function renderReport(data) {
                     <th class="num">Gap</th>
                     <th>Método</th>
                     <th class="num">Envíos</th>
+                    <th class="num">Tiempo</th>
                     <th>Última mejora</th>
                 </tr>
             </thead>
@@ -193,6 +207,7 @@ function renderReport(data) {
                         <td class="num">${fmtNum(gap(r.best_objective_value))}%</td>
                         <td class="method">${escapeHtml(r.best_method || '-')}</td>
                         <td class="num">${r.total_submissions}</td>
+                        <td class="num">${fmtTime(r.best_time_seconds)}</td>
                         <td>${fmtDateTime(r.last_improvement)}</td>
                     </tr>
                 `).join('')}

@@ -1454,3 +1454,89 @@ strong {
 .scrollable-table .table tbody tr:hover {
     transform: none;
 }
+
+.grid-4 {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+/* Ranking page tabs: current competition / general classification */
+.ranking-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.ranking-tab {
+    flex: 1 1 220px;
+    padding: 0.85rem 1.25rem;
+    border: 2px solid var(--urjc-red);
+    border-radius: var(--border-radius);
+    background: var(--urjc-white);
+    color: var(--urjc-red);
+    font-size: 1.05rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.ranking-tab:hover {
+    background: rgba(196, 30, 58, 0.06);
+}
+
+.ranking-tab.active {
+    background: linear-gradient(135deg, var(--urjc-red), var(--urjc-dark-red));
+    color: var(--urjc-white);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Logged-in user's own row in rankings */
+.table tbody tr.own-row:not(.rank-1):not(.rank-2):not(.rank-3) {
+    background: rgba(196, 30, 58, 0.12);
+}
+
+.table tbody tr.own-row td:first-child {
+    box-shadow: inset 5px 0 0 var(--urjc-red);
+}
+
+/* Last positions in the general classification */
+.position-badges {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+}
+
+.position-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.35rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    background: #e9ecef;
+    color: #495057;
+}
+
+.position-badge.position-gold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #4a3700;
+}
+
+.position-badge.position-silver {
+    background: linear-gradient(135deg, #E8E8E8, #B0B0B0);
+    color: #333;
+}
+
+.position-badge.position-bronze {
+    background: linear-gradient(135deg, #E3A869, #CD7F32);
+    color: #3d2205;
+}
+
+.position-badge.position-none {
+    background: transparent;
+    border: 1px dashed #ced4da;
+    color: #adb5bd;
+}

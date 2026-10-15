@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadCurrentTSPInstance();
     await loadSystemSettings();
     loadUsers({ silent: true });
+    loadCompetitionHistory();
     // Setup solution validator UI and handlers
     setupSolutionValidator();
     
@@ -97,6 +98,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 `• Todas las soluciones enviadas\n` +
                 `• Todo el ranking actual\n` +
                 `• Toda la información de progreso de los usuarios\n\n` +
+                `Las posiciones finales se guardarán en la Clasificación General.\n\n` +
                 `Esta acción NO se puede deshacer.`
             );
             
@@ -121,12 +123,15 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             if (response.ok) {
                 const message = data.cleared 
-                    ? `Instancia TSP subida exitosamente. Ranking y soluciones anteriores eliminados.`
+                    ? `Instancia TSP subida exitosamente. Ranking anterior archivado en la Clasificación General.`
                     : `Instancia TSP subida exitosamente (ID: ${data.instanceId}).`;
                 
                 showAlert('alert-container', message, 'success');
                 tspForm.reset();
                 await loadCurrentTSPInstance(); // Reload instance info
+                await loadSystemSettings(); // Configuration is reset with the new instance
+                await loadRankingStatus();
+                loadCompetitionHistory();
             } else {
                 showAlert('alert-container', data.error || 'Error al subir la instancia TSP', 'danger');
             }
@@ -226,6 +231,117 @@ async function exportCSV() {
         }
     } catch (error) {
         console.error('Export error:', error);
+        showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
+    }
+}
+
+let competitionPaused = false;
+
+function updatePauseUI(paused) {
+    competitionPaused = paused;
+    const status = document.getElementById('paused-status');
+    const btn = document.getElementById('toggle-pause-btn');
+    if (!status || !btn) return;
+
+    if (paused) {
+        status.innerHTML = '<span class="status-indicator status-frozen"></span><span><strong>Competición pausada:</strong> no se pueden enviar soluciones</span>';
+        btn.textContent = '▶️ Reanudar Competición';
+        btn.className = 'btn btn-success';
+    } else {
+        status.innerHTML = '<span class="status-indicator status-online"></span><span>Competición activa: los alumnos pueden enviar soluciones</span>';
+        btn.textContent = '⏸️ Pausar Competición';
+        btn.className = 'btn btn-warning';
+    }
+}
+
+async function togglePause() {
+    const pause = !competitionPaused;
+    if (pause && !confirm('¿Pausar la competición? Los alumnos no podrán enviar soluciones hasta que la reanudes.')) {
+        return;
+    }
+
+    const btn = document.getElementById('toggle-pause-btn');
+    setLoading(btn, true);
+    try {
+        const response = await fetch('/api/admin/set-paused', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paused: pause })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            updatePauseUI(data.paused);
+            showAlert('alert-container', data.paused ? 'Competición pausada.' : 'Competición reanudada.', 'success');
+        } else {
+            showAlert('alert-container', data.error || 'Error al cambiar el estado de la competición', 'danger');
+        }
+    } catch (error) {
+        console.error('Toggle pause error:', error);
+        showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
+    } finally {
+        setLoading(btn, false);
+        updatePauseUI(competitionPaused);
+    }
+}
+
+async function loadCompetitionHistory() {
+    const tbody = document.getElementById('history-tbody');
+    if (!tbody) return;
+
+    try {
+        const response = await fetch('/api/admin/competition-history');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        const competitions = data.competitions || [];
+
+        if (competitions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Todavía no hay competiciones archivadas</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = competitions.map(c => {
+            // archived_at is SQLite CURRENT_TIMESTAMP (UTC without timezone)
+            const date = new Date(String(c.archived_at).replace(' ', 'T') + 'Z');
+            return `
+                <tr>
+                    <td>${escapeHtml(c.instance_name)}</td>
+                    <td>${isNaN(date.getTime()) ? '-' : formatDate(date)}</td>
+                    <td>${c.participants}</td>
+                    <td>${formatObjectiveValue(c.best_value)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="deleteCompetition(${c.id}, ${escapeHtml(JSON.stringify(String(c.instance_name)))})">
+                            🗑️ Eliminar
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Load competition history error:', error);
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Error al cargar el histórico</td></tr>';
+    }
+}
+
+async function deleteCompetition(id, name) {
+    if (!confirm(`¿Eliminar la competición "${name}" del histórico?\n\nDejará de contar en la Clasificación General. Esta acción NO se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/admin/delete-competition', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        const data = await response.json();
+        if (response.ok) {
+            showAlert('alert-container', 'Competición eliminada del histórico.', 'success');
+            loadCompetitionHistory();
+        } else {
+            showAlert('alert-container', data.error || 'Error al eliminar la competición', 'danger');
+        }
+    } catch (error) {
+        console.error('Delete competition error:', error);
         showAlert('alert-container', 'Error de conexión. Por favor, inténtalo de nuevo.', 'danger');
     }
 }
@@ -732,7 +848,11 @@ async function loadSystemSettings() {
             if (endDateInput && settings.competition_end_date) {
                 const endDate = new Date(settings.competition_end_date);
                 endDateInput.value = endDate.toISOString().slice(0, -1); // Remove Z for datetime-local
+            } else if (endDateInput) {
+                endDateInput.value = '';
             }
+
+            updatePauseUI(settings.competition_paused === 'true');
         }
     } catch (error) {
         console.error('Error loading system settings:', error);
