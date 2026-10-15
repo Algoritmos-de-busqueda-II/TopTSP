@@ -210,7 +210,7 @@ async function loadSolutionHistory() {
                         <td>${solution.solution}</td>
                         <td><strong>${formatObjectiveValue(solution.objective_value)}</strong></td>
                         <td>${formatMethod(solution.method, solution.method_description)}</td>
-                        <td>${formatTime(solution.time_seconds)}</td>
+                        <td class="time-col">${formatTime(solution.time_seconds)}</td>
                         <td>
                             <span class="status-indicator ${solution.is_valid ? 'status-online' : 'status-offline'}"></span>
                             ${solution.is_valid ? 'Válida' : 'Inválida'}

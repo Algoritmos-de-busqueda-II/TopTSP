@@ -20,6 +20,7 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
     * [Ranking Público](#ranking-público)
     * [Clasificación General](#clasificación-general)
     * [Visualización TSP](#visualización-tsp)
+    * [Insignias del Aula Virtual](#insignias-del-aula-virtual)
 7.  [API Endpoints](#api-endpoints)
 8.  [Validaciones Implementadas](#validaciones-implementadas)
 9.  [Seguridad](#seguridad)
@@ -41,6 +42,7 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 - **Clasificación General** entre competiciones: medallero y clasificación por mejores soluciones
 - **Informe imprimible (PDF)** del ranking con estadísticas, progreso y mejor solución, listo para publicar en Moodle
 - **Pausa de la competición** para bloquear temporalmente los envíos
+- **Insignias del aula virtual** (TopTSP Oro, Plata, Bronce y Diamante) presentadas en la portada
 - **Visualización interactiva** de instancias TSP con gráficos D3.js
 - **Descarga de instancias** en formato TSPLIB
 - **Exportación CSV** de todas las soluciones y del ranking
@@ -116,6 +118,7 @@ topabii/
 │   ├── ranking.js         # Lógica del ranking público y la Clasificación General
 │   ├── ranking-report.html # Informe imprimible del ranking (PDF, solo admin)
 │   ├── ranking-report.js  # Generación del informe con gráficos SVG
+│   ├── images/badges/     # Insignias TopTSP (PNG 512×512, fondo transparente)
 │   └── visualize.js       # Visualización interactiva con D3.js
 └── README.md              # Esta documentación
 ```
@@ -196,7 +199,7 @@ topabii/
    - Cálculo automático del valor objetivo
    - Solo se guarda la mejor solución de cada usuario
    - **Método (opcional)**: acrónimo de hasta 10 caracteres (p. ej. `GA`), que es lo que se muestra en las tablas, y una **descripción** opcional de hasta 200 caracteres que aparece al pasar el ratón sobre el acrónimo y al visualizar la solución
-   - **Tiempo (opcional)**: segundos que ha tardado el algoritmo en obtener la solución. Es solo informativo, no afecta al ranking
+   - **Tiempo (opcional)**: segundos que ha tardado el algoritmo en obtener la solución. Es solo informativo, no afecta al ranking. Se muestra en formato compacto: `12.5"`, `3' 20"`, `1h 20' 34"`
 
 2. **Ver Estadísticas Personales**
    - Mejor valor objetivo
@@ -259,6 +262,17 @@ Al visualizar la solución de un usuario desde el ranking (`/visualize?userId=..
 
 <img width="900" alt="Visualización de la mejor solución de un usuario con su historial de envíos" src="docs/images/visualizar.png" />
 
+
+### Insignias del Aula Virtual
+
+La portada muestra, con una animación de giro, las insignias que se entregan en el aula virtual al terminar todas las competiciones de la asignatura:
+
+- **TopTSP Oro, Plata y Bronce**: para los tres primeros del Medallero de la Clasificación General
+- **TopTSP Diamante**: para quien lidere la Clasificación por Mejores Soluciones
+
+Las imágenes están en `public/images/badges/` (`topTSP-oro.png`, `topTSP-plata.png`, `topTSP-bronce.png`, `topTSP-diamante.png`): PNG cuadrados de 512×512 con fondo transparente, listos para subirlos como insignias de Moodle.
+
+<img width="900" alt="Insignias TopTSP del aula virtual" src="docs/images/insignias.png" />
 
 ## API Endpoints
 

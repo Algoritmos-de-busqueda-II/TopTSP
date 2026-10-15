@@ -269,8 +269,8 @@ function populateRankingTable(ranking) {
             <td><strong>${formatObjectiveValue(entry.best_objective_value)}</strong></td>
             <td>${formatMethod(entry.best_method, entry.best_method_description)}</td>
             <td>${formatDate(entry.last_improvement)}</td>
-            <td>${entry.total_submissions || 0}</td>
-            <td>${formatTime(entry.best_time_seconds)}</td>
+            <td class="compact-col">${entry.total_submissions || 0}</td>
+            <td class="time-col">${formatTime(entry.best_time_seconds)}</td>
             <td>
                 <button onclick="visualizeUserSolution(${entry.user_id})" class="btn btn-secondary btn-sm" title="Visualizar solución">
                     👁️
@@ -325,7 +325,7 @@ async function loadRecentSubmissions() {
                 <td>${sanitizeHtml(sub.user || '-')}</td>
                 <td><strong>${formatObjectiveValue(sub.objective_value)}</strong></td>
                 <td>${formatMethod(sub.method, sub.method_description)}</td>
-                <td>${formatTime(sub.time_seconds)}</td>
+                <td class="time-col">${formatTime(sub.time_seconds)}</td>
                 <td>${isNaN(date.getTime()) ? '-' : formatDate(date)}</td>
             `;
             tbody.appendChild(row);

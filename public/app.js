@@ -85,32 +85,71 @@ function formatObjectiveValue(value) {
     return Number(value).toFixed(2);
 }
 
-// Method acronym shown in tables; its optional description appears on hover
+// Method acronym shown in tables; its optional description appears in a tooltip
 function formatMethod(method, description) {
     const escape = text => String(text === null || text === undefined ? '' : text)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    if (!method) return description ? `<span class="method-acronym" title="${escape(description)}">-</span>` : '-';
-    return description
-        ? `<span class="method-acronym" title="${escape(description)}">${escape(method)}</span>`
-        : escape(method);
+    if (!description) return method ? escape(method) : '-';
+    return `<span class="method-acronym" tabindex="0" data-description="${escape(description)}">${escape(method || '-')}</span>`;
 }
 
-// Optional solving time (seconds) reported by the student: "12.5 s", "3 min 20 s", "1 h 05 min"
+// Tooltip for method descriptions (instant on hover/focus, toggled on tap)
+(function setupMethodTooltip() {
+    let tooltip = null;
+    let current = null;
+
+    function show(target) {
+        if (!tooltip) {
+            tooltip = document.createElement('div');
+            tooltip.className = 'method-tooltip';
+            tooltip.setAttribute('role', 'tooltip');
+            document.body.appendChild(tooltip);
+        }
+        current = target;
+        tooltip.textContent = target.dataset.description;
+        tooltip.classList.add('visible');
+        const rect = target.getBoundingClientRect();
+        const tip = tooltip.getBoundingClientRect();
+        let left = rect.left + rect.width / 2 - tip.width / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tip.width - 8));
+        let top = rect.top - tip.height - 8;
+        if (top < 8) top = rect.bottom + 8;
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+    }
+
+    function hide() {
+        current = null;
+        if (tooltip) tooltip.classList.remove('visible');
+    }
+
+    const find = event => event.target.closest && event.target.closest('.method-acronym[data-description]');
+
+    document.addEventListener('mouseover', event => { const t = find(event); if (t) show(t); });
+    document.addEventListener('mouseout', event => { if (find(event)) hide(); });
+    document.addEventListener('focusin', event => { const t = find(event); if (t) show(t); });
+    document.addEventListener('focusout', event => { if (find(event)) hide(); });
+    document.addEventListener('click', event => {
+        const t = find(event);
+        if (t && t !== current) show(t); else hide();
+    });
+    window.addEventListener('scroll', hide, true);
+})();
+
+// Optional solving time (seconds) reported by the student, compact: 12.5", 3' 20", 1h 05' 03"
 function formatTime(seconds) {
     if (seconds === null || seconds === undefined || seconds === '' || isNaN(Number(seconds))) return '-';
     const total = Number(seconds);
     if (total < 60) {
-        return `${Number(total.toFixed(total < 10 ? 2 : 1))} s`;
+        return `${Number(total.toFixed(total < 10 ? 2 : 1))}"`;
     }
-    if (total < 3600) {
-        const minutes = Math.floor(total / 60);
-        const secs = Math.round(total - minutes * 60);
-        return secs === 60 ? `${minutes + 1} min` : `${minutes} min ${secs} s`;
-    }
-    const hours = Math.floor(total / 3600);
-    const minutes = Math.round((total - hours * 3600) / 60);
-    return minutes === 60 ? `${hours + 1} h 00 min` : `${hours} h ${String(minutes).padStart(2, '0')} min`;
+    const rounded = Math.round(total);
+    const hours = Math.floor(rounded / 3600);
+    const minutes = Math.floor((rounded % 3600) / 60);
+    const secs = rounded % 60;
+    const pad = n => String(n).padStart(2, '0');
+    return hours > 0 ? `${hours}h ${pad(minutes)}' ${pad(secs)}"` : `${minutes}' ${pad(secs)}"`;
 }
 
 async function checkAuthStatus() {

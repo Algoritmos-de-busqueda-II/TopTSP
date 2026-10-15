@@ -69,13 +69,12 @@ function fmtNum(value, decimals = 2) {
 function fmtTime(seconds) {
     if (seconds === null || seconds === undefined || isNaN(Number(seconds))) return '-';
     const total = Number(seconds);
-    if (total < 60) return `${Number(total.toFixed(total < 10 ? 2 : 1)).toLocaleString('es-ES')} s`;
-    if (total < 3600) {
-        const minutes = Math.floor(total / 60);
-        return `${minutes} min ${Math.round(total - minutes * 60)} s`;
-    }
-    const hours = Math.floor(total / 3600);
-    return `${hours} h ${String(Math.round((total - hours * 3600) / 60)).padStart(2, '0')} min`;
+    if (total < 60) return `${Number(total.toFixed(total < 10 ? 2 : 1)).toLocaleString('es-ES')}"`;
+    const rounded = Math.round(total);
+    const hours = Math.floor(rounded / 3600);
+    const minutes = Math.floor((rounded % 3600) / 60);
+    const pad = n => String(n).padStart(2, '0');
+    return hours > 0 ? `${hours}h ${pad(minutes)}' ${pad(rounded % 60)}"` : `${minutes}' ${pad(rounded % 60)}"`;
 }
 
 function median(sorted) {

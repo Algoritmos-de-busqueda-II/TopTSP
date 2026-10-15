@@ -291,7 +291,7 @@ function renderSubmissionsTable() {
             <td><strong>#${number}</strong></td>
             <td><strong>${formatObjectiveValue(sub.objective_value)}</strong></td>
             <td></td>
-            <td>${formatTime(sub.time_seconds)}</td>
+            <td class="time-col">${formatTime(sub.time_seconds)}</td>
             <td>${date && !isNaN(date.getTime()) ? formatDate(date) : '-'}</td>
             <td></td>
         `;
