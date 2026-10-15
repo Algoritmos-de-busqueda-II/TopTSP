@@ -2,7 +2,7 @@
 
 TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos que permite la gestión de competiciones del Problema del Viajante de Comercio (TSP).
 
-<img width="1159" height="1064" alt="image" src="https://github.com/user-attachments/assets/da24616b-989f-4ec5-8f82-76b82fbe870a" />
+<img width="900" alt="Página de inicio de TopTSP" src="docs/images/inicio.png" />
 
 ## Tabla de Contenidos
 
@@ -28,7 +28,8 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 12. [Ejemplo de Uso](#ejemplo-de-uso)
 13. [Soporte y Mantenimiento](#soporte-y-mantenimiento)
     * [Actualizar un servidor en producción](#actualizar-un-servidor-en-producción)
-14. [Licencia](#licencia)
+14. [Capturas de pantalla](#capturas-de-pantalla)
+15. [Licencia](#licencia)
 
 ## Características Principales
 
@@ -135,7 +136,7 @@ topabii/
    - Al reemplazar la instancia, las posiciones finales de la competición se **archivan en la Clasificación General** antes de borrar el ranking (solo si hubo participantes; los administradores no cuentan)
    - La configuración de la competición se reinicia: nombre tomado del fichero TSPLIB, sin fecha de cierre, sin pausa y ranking sin congelar
   
-<img width="1159" height="870" alt="image" src="https://github.com/user-attachments/assets/b2bde833-6f22-4429-a06f-488ce3598bb3" />
+<img width="900" alt="Crear usuarios y gestionar la instancia TSP" src="docs/images/admin-instancia.png" />
 
 
 3. **Control del Ranking**
@@ -145,30 +146,36 @@ topabii/
    - **Exportar Ranking CSV**: posición, usuario, email, función objetivo, gap, método, envíos, tiempo y última mejora
    - El informe y el CSV usan siempre los datos actuales (aunque el ranking esté congelado) y excluyen a los administradores
 
-<img width="573" height="630" alt="image" src="https://github.com/user-attachments/assets/eb8f1672-bc24-4345-8abd-5ed96018a18f" />
+<img width="900" alt="Control de ranking y exportación de datos" src="docs/images/admin-ranking.png" />
+
+<img width="650" alt="Informe imprimible del ranking (PDF)" src="docs/images/informe-pdf.png" />
 
 
 4. **Exportar Datos**
    - Descargar CSV con todas las soluciones
    - Incluye: usuario, solución, valor objetivo, método, tiempo, fecha/hora, validez
-  
-<img width="573" height="630" alt="image" src="https://github.com/user-attachments/assets/375603f2-2cc4-4532-a719-2d0d04db7ff6" />
 
 
 5. **Configuración de la Competición**
    - Nombre de la instancia y fecha/hora de cierre
    - **Pausar / Reanudar competición**: mientras está pausada no se pueden enviar soluciones (se avisa en la página del alumno, el ranking y la portada)
 
+<img width="900" alt="Configuración de la competición con pausa" src="docs/images/admin-config.png" />
+
 6. **Gestión de Usuarios**
    - La lista se carga automáticamente al abrir el panel
    - **Buscador por correo** que filtra mientras escribes
    - La tabla muestra 5 filas y tiene su propio scroll, con la cabecera fija
 
+<img width="900" alt="Gestión de usuarios con buscador por correo" src="docs/images/admin-usuarios.png" />
+
 7. **Histórico de Competiciones**
    - Lista de competiciones archivadas que cuentan en la Clasificación General
    - Permite eliminar una competición del histórico si no debe contar
 
-   8. **Validador de Soluciones**
+<img width="900" alt="Histórico de competiciones" src="docs/images/admin-historico.png" />
+
+8. **Validador de Soluciones**
        - Herramienta disponible en el panel de administración (sección "Gestión de Usuarios").
        - Permite pegar una solución (nodos separados por comas) y comprobar rápidamente:
           - Si la longitud de la ruta coincide con la dimensión de la instancia cargada.
@@ -178,7 +185,7 @@ topabii/
        - La comprobación se realiza en el cliente: no sube ni guarda la solución, solo muestra diagnósticos para ayudar a depurar antes de enviar.
        - Útil para administradores y participantes que quieran verificar soluciones antes de enviarlas.
 
-<img width="573" height="674" alt="image" src="https://github.com/user-attachments/assets/662bfc4f-61c1-45ed-933c-7cba74932717" />
+<img width="900" alt="Validador de soluciones" src="docs/images/admin-validador.png" />
 
 
 ### Para Usuarios
@@ -200,6 +207,8 @@ topabii/
 3. **Cambiar Contraseña**
    - Actualización segura de credenciales
 
+<img width="900" alt="Página del alumno con estadísticas y formulario de envío con tiempo" src="docs/images/usuario.png" />
+
 ### Ranking Público
 
 - **Acceso libre** (sin necesidad de autenticación)
@@ -213,7 +222,7 @@ topabii/
 - **Últimos envíos**: Tabla con los 5 envíos más recientes de la competición (oculta mientras el ranking está congelado)
 - **Botones interactivos**: Descargar instancia y visualizar TSP
 
-<img width="2320" height="1472" alt="image" src="https://github.com/user-attachments/assets/c32b2094-19dd-43a1-8db5-1b452e9f1e65" />
+<img width="900" alt="Ranking de la competición actual con la fila del usuario resaltada" src="docs/images/ranking-actual.png" />
 
 
 ### Clasificación General
@@ -225,6 +234,10 @@ Cada vez que el administrador carga una nueva instancia, las posiciones finales 
 - **Competiciones disputadas**: instancia, fecha, participantes, mejor solución y ganador
 
 El puesto medio y la desviación promedio se calculan sobre las competiciones en las que ha participado cada alumno.
+
+<img width="900" alt="Medallero de la Clasificación General" src="docs/images/ranking-general.png" />
+
+<img width="900" alt="Clasificación de Óptimos" src="docs/images/ranking-optimos.png" />
 
 ### Visualización TSP
 
@@ -242,8 +255,7 @@ Al visualizar la solución de un usuario desde el ranking (`/visualize?userId=..
 - **Comparar con la mejor del concurso**: La casilla *Mostrar mejor solución del concurso* (desactivada por defecto) superpone en rojo la ruta de la mejor solución de la competición para ver las diferencias con la solución mostrada
 - **Progresión de soluciones**: Gráfico con la evolución de los envíos del usuario frente a la mejor solución de la competición
 
-<img width="1160" height="937" alt="image" src="https://github.com/user-attachments/assets/2385c9cb-8fa8-4fea-a080-43153f3e6e81" />
-<img width="2320" height="2134" alt="image" src="https://github.com/user-attachments/assets/1a4fad1c-6ff1-4165-a166-f7ee5c5d211f" />
+<img width="900" alt="Visualización de la mejor solución de un usuario con su historial de envíos" src="docs/images/visualizar.png" />
 
 
 ## API Endpoints
@@ -358,8 +370,6 @@ Las columnas y tablas nuevas se crean automáticamente al arrancar el servidor s
    - Acceder desde botones en páginas principal y ranking
    - Vista interactiva en `/visualize`
    - Controles de zoom, etiquetas y tamaño de puntos
-  
-<img width="1160" height="1067" alt="image" src="https://github.com/user-attachments/assets/14b11eb3-1ffd-44e5-97c4-fcc863b26073" />
 
 
 ## Soporte y Mantenimiento
@@ -375,6 +385,10 @@ Las columnas y tablas nuevas se crean automáticamente al arrancar el servidor s
 2. La base de datos se migra sola al arrancar (columnas y tablas nuevas)
 3. Recargar el navegador con Ctrl+F5 para obtener los JavaScript nuevos
 4. Para empezar una competición nueva, subir la instancia **después** de actualizar: así la competición anterior queda archivada en la Clasificación General
+
+## Capturas de pantalla
+
+Las capturas de este README se han generado con datos de demostración (usuarios `estudianteN@alumnos.urjc.es` e instancias públicas o aleatorias). No contienen datos reales de estudiantes.
 
 ## Licencia
 MIT License
