@@ -38,7 +38,7 @@ TopTSP es una aplicación web desarrollada para la Universidad Rey Juan Carlos q
 - **Subida y validación** de soluciones TSP en tiempo real
 - **Ranking dinámico** con ordenación por valor objetivo y fecha
 - **Tiempo de resolución** opcional e informativo en cada envío
-- **Clasificación General** entre competiciones: medallero y clasificación de óptimos
+- **Clasificación General** entre competiciones: medallero y clasificación por mejores soluciones
 - **Informe imprimible (PDF)** del ranking con estadísticas, progreso y mejor solución, listo para publicar en Moodle
 - **Pausa de la competición** para bloquear temporalmente los envíos
 - **Visualización interactiva** de instancias TSP con gráficos D3.js
@@ -232,14 +232,14 @@ topabii/
 Cada vez que el administrador carga una nueva instancia, las posiciones finales de la competición anterior se guardan y pasan a la Clasificación General (`/ranking#general`), que muestra:
 
 - **Medallero**: ordenado por oros, platas y bronces (los puestos son los del ranking: a igual valor, queda delante quien lo consiguió antes). Incluye el número de competiciones, el puesto medio y las **últimas clasificaciones** como `[1][7][3][–]`, con colores oro, plata y bronce
-- **Clasificación de Óptimos**: ordenada por la desviación promedio respecto a la mejor solución de cada competición; en caso de empate, por número de óptimos (veces que se iguala la mejor solución de una competición; varios participantes pueden lograrlo en la misma) y, después, por número de competiciones disputadas
+- **Clasificación por Mejores Soluciones**: ordenada por la desviación promedio respecto a la mejor solución encontrada en cada competición (las competiciones en las que no se ha participado cuentan como un 100% de desviación); en caso de empate, por **#Mejores** (número de competiciones en las que se ha encontrado la mejor solución; varios participantes pueden encontrarla en la misma) y, después, por número de competiciones disputadas
 - **Competiciones disputadas**: instancia, fecha, participantes, mejor solución y ganador
 
-El puesto medio y la desviación promedio se calculan sobre las competiciones en las que ha participado cada alumno.
+El puesto medio se calcula sobre las competiciones en las que ha participado cada alumno. En la desviación promedio, en cambio, cada competición en la que no ha participado cuenta como un 100% de desviación.
 
 <img width="900" alt="Medallero de la Clasificación General" src="docs/images/ranking-general.png" />
 
-<img width="900" alt="Clasificación de Óptimos" src="docs/images/ranking-optimos.png" />
+<img width="900" alt="Clasificación por Mejores Soluciones" src="docs/images/ranking-mejores.png" />
 
 ### Visualización TSP
 

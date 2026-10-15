@@ -1192,6 +1192,9 @@ async function archiveCurrentCompetition(db) {
     }
 }
 
+// Deviation (%) assigned to a student for each archived competition they did not take part in
+const ABSENCE_DEVIATION = 100;
+
 // General classification across all archived competitions (public)
 app.get('/api/general-ranking', async (req, res) => {
     const db = getDatabase();
@@ -1226,7 +1229,7 @@ app.get('/api/general-ranking', async (req, res) => {
                 if (r.position === 1) p.gold++;
                 else if (r.position === 2) p.silver++;
                 else if (r.position === 3) p.bronze++;
-                // Optimum: matched the best value of that competition (ties allowed)
+                // Best solution found: matched the best value of that competition (ties allowed)
                 if (Math.abs(r.objective_value - c.best_value) < 0.005) p.optimums++;
             });
         });
@@ -1253,7 +1256,8 @@ app.get('/api/general-ranking', async (req, res) => {
                 optimums: p.optimums,
                 participations: p.participations,
                 avgPosition: Number((p.sumPosition / p.participations).toFixed(2)),
-                avgDeviation: Number((p.sumDeviation / p.participations).toFixed(4)),
+                // Competitions the student did not take part in count as a 100% deviation
+                avgDeviation: Number(((p.sumDeviation + ABSENCE_DEVIATION * (competitions.length - p.participations)) / competitions.length).toFixed(4)),
                 positions: p.positions
             }))
         });
