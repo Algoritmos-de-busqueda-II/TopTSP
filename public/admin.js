@@ -587,7 +587,10 @@ function setupSolutionValidator() {
 
     if (!textarea || !resultDiv) return;
 
+    let requestSeq = 0;
+
     async function validateAndRender() {
+        const seq = ++requestSeq;
         const text = textarea.value || '';
         const instanceInfo = await getCurrentTSPInstance();
         const dimension = instanceInfo.hasInstance && instanceInfo.instance && instanceInfo.instance.dimension ? instanceInfo.instance.dimension : null;
@@ -711,6 +714,45 @@ function setupSolutionValidator() {
 
         html += '</div>';
         resultDiv.innerHTML = html;
+
+        // If the solution is feasible, show its quality (objective value and gap to best submitted)
+        const feasible = dimension && nums.length === dimension && !duplicates.length && !outOfRange.length && !missing.length;
+        if (!feasible) return;
+
+        const qualityDiv = document.createElement('div');
+        qualityDiv.className = 'validator-summary';
+        qualityDiv.style.marginTop = '.8rem';
+        qualityDiv.innerHTML = '<div><strong>Calidad:</strong> calculando...</div>';
+        resultDiv.appendChild(qualityDiv);
+
+        try {
+            const response = await fetch('/api/admin/evaluate-solution', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ solution: nums.join(',') })
+            });
+            const data = await response.json();
+            if (seq !== requestSeq) return;
+
+            if (!response.ok) {
+                qualityDiv.innerHTML = `<div><strong>Calidad:</strong> <span style="${red}">${data.error || 'No se pudo evaluar la solución'}</span></div>`;
+                return;
+            }
+
+            let qhtml = `<div><strong>Solución factible.</strong> Valor objetivo (distancia total): <span style="${green}">${data.objectiveValue.toLocaleString('es-ES')}</span></div>`;
+            if (data.bestValue !== null && data.bestValue > 0) {
+                const gap = (data.objectiveValue - data.bestValue) / data.bestValue * 100;
+                const gapStyle = gap <= 0 ? green : amber;
+                const gapText = gap < 0 ? `${gap.toFixed(2)}% (mejora la mejor enviada)` : `${gap.toFixed(2)}%`;
+                qhtml += `<div><strong>Mejor solución enviada:</strong> ${data.bestValue.toLocaleString('es-ES')} — <strong>Desviación:</strong> <span style="${gapStyle}">${gapText}</span></div>`;
+            } else {
+                qhtml += '<div><strong>Mejor solución enviada:</strong> todavía no hay soluciones para esta instancia</div>';
+            }
+            qualityDiv.innerHTML = qhtml;
+        } catch (error) {
+            if (seq !== requestSeq) return;
+            qualityDiv.innerHTML = `<div><strong>Calidad:</strong> <span style="${red}">Error de conexión al evaluar la solución</span></div>`;
+        }
     }
 
     // real-time validation as user types (debounce)
@@ -722,6 +764,7 @@ function setupSolutionValidator() {
     clearBtn && clearBtn.addEventListener('click', (e) => {
         e.preventDefault();
         textarea.value = '';
+        requestSeq++;
         document.getElementById('solution-validator-result').innerHTML = '';
     });
 }

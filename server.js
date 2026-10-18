@@ -219,6 +219,50 @@ app.get('/api/admin/current-tsp', requireAdmin, (req, res) => {
     });
 });
 
+// Evaluate a solution against the current TSP instance without storing it (admin only)
+app.post('/api/admin/evaluate-solution', requireAdmin, (req, res) => {
+    const { solution } = req.body;
+    if (typeof solution !== 'string' || !solution.trim()) {
+        return res.status(400).json({ error: 'La solución está vacía' });
+    }
+
+    const db = getDatabase();
+
+    db.get('SELECT value FROM system_settings WHERE key = ?', ['current_tsp_instance'], (err, setting) => {
+        if (err || !setting) {
+            db.close();
+            return res.status(400).json({ error: 'No hay una instancia TSP cargada' });
+        }
+
+        const tspInstanceId = parseInt(setting.value);
+
+        db.get('SELECT dimension, distance_matrix FROM tsp_instances WHERE id = ?', [tspInstanceId], (err, instance) => {
+            if (err || !instance) {
+                db.close();
+                return res.status(400).json({ error: 'La instancia TSP configurada no existe' });
+            }
+
+            const solutionArray = solution.split(',').map(n => parseInt(n.trim()));
+            const isValid = validateTSPSolution(solutionArray, instance.dimension);
+            if (!isValid.valid) {
+                db.close();
+                return res.status(400).json({ error: isValid.error });
+            }
+
+            const objectiveValue = calculateObjectiveValue(solutionArray, JSON.parse(instance.distance_matrix));
+
+            db.get('SELECT MIN(objective_value) AS best FROM solutions WHERE tsp_instance_id = ? AND is_valid = 1',
+                [tspInstanceId], (err, row) => {
+                db.close();
+                res.json({
+                    objectiveValue,
+                    bestValue: !err && row && row.best !== null ? row.best : null
+                });
+            });
+        });
+    });
+});
+
 // Upload TSP instance endpoint (admin only)
 app.post('/api/admin/upload-tsp', requireAdmin, (req, res) => {
     const { tspData, replaceExisting } = req.body;
