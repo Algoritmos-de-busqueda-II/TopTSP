@@ -1,6 +1,6 @@
 {
   "name": "topabii",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "TopABII - TSP Competition Platform for Universidad Rey Juan Carlos",
   "main": "server.js",
   "scripts": {
